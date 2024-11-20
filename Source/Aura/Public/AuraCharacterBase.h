@@ -12,12 +12,12 @@ class AURA_API AAuraCharacterBase : public ACharacter
 	GENERATED_BODY()
 
 public:
-
+	//构造函数
 	AAuraCharacterBase();
 
 protected:
-
+	//游戏开始
 	virtual void BeginPlay() override;
-
+	
 
 };

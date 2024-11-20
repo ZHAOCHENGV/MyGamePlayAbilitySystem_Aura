@@ -7,6 +7,7 @@
 AAuraCharacterBase::AAuraCharacterBase()
 {
  	PrimaryActorTick.bCanEverTick = false;
+	
 
 }
 
