@@ -3,6 +3,7 @@
 
 #include "Player/AuraPlayerController.h"
 
+#include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 
 AAuraPlayerController::AAuraPlayerController()
@@ -37,4 +38,39 @@ void AAuraPlayerController::BeginPlay()
 	InputModeData.SetHideCursorDuringCapture(false);
 	//应用上述输入模式配置
 	SetInputMode(InputModeData);
+}
+
+void AAuraPlayerController::SetupInputComponent()
+{
+	Super::SetupInputComponent();
+	//将基础输入组件InputComponent转换为增强输入
+	UEnhancedInputComponent * EnhancedInputComponent = CastChecked<UEnhancedInputComponent>(InputComponent);
+	//绑定输入操作的函数
+	//ETriggerEvent::Triggered： 触发事件::触发   
+	EnhancedInputComponent->BindAction(MoveAction,ETriggerEvent::Triggered,this,&AAuraPlayerController::Move);
+}
+
+void AAuraPlayerController::Move(const struct FInputActionValue& InputActionValue)
+{
+	//从InputActionValue 提取输入的2D向量
+	const FVector2D InputAxisVector2D = InputActionValue.Get<FVector2D>();
+	//获取当前控制器旋转
+	const FRotator Rotation = GetControlRotation();
+	//提取控制器Yaw的方向
+	const FRotator YawRotation(0.f,Rotation.Yaw,0.f);
+
+	//将旋转角度（YawRotation）转换为旋转矩阵，通过GetUnitAxis，提取矩阵的 X 轴（前方向量）
+	const FVector ForwardDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
+	//将旋转角度（YawRotation）转换为旋转矩阵，通过GetUnitAxis，提取矩阵的 Y 轴（右方向量）
+	const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
+	//获取当前控制的 Pawn
+	if(APawn * ControlledPawn = GetPawn<APawn>())
+	{
+		//添加移动输入
+		ControlledPawn->AddMovementInput(ForwardDirection,InputAxisVector2D.Y);
+		ControlledPawn->AddMovementInput(RightDirection,InputAxisVector2D.X);
+		
+	}
+
+	
 }
