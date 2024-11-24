@@ -20,7 +20,5 @@ public:
 	//重载接口的 不突出演员 事件
 	virtual void UnHigHlightActor()override;
 
-	//是否被鼠标检查到
-	UPROPERTY(BlueprintReadOnly)
-	bool bHighlighted = false;
+	
 };

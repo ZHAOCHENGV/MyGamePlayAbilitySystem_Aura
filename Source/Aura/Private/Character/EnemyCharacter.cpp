@@ -3,15 +3,21 @@
 
 #include "Character/EnemyCharacter.h"
 
+#include "Aura/Aura.h"
+
 void AEnemyCharacter::HigHlihtActor()
 {
-	bHighlighted = true;
-	GetMesh()->bRenderCustomDepth = true;
-	GetMesh()->CustomDepthStencilValue = 255;
+	
+	GetMesh()->SetRenderCustomDepth(true);
+	GetMesh()->SetCustomDepthStencilValue(CUSTOM_DEPTH_RED);
+	Weapon->SetRenderCustomDepth(true);
+	Weapon->SetCustomDepthStencilValue(CUSTOM_DEPTH_RED);
 }
 
 void AEnemyCharacter::UnHigHlightActor()
 {
-	bHighlighted = false;
-	GetMesh()->bRenderCustomDepth = false;
+	
+	GetMesh()->SetRenderCustomDepth(false);
+	Weapon->SetRenderCustomDepth(false);
 }
+ 
