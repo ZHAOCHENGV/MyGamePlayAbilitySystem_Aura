@@ -104,7 +104,7 @@ void AAuraPlayerController::CursorTrace()
 		}
 		if (ThisActor)
 		{
-			ThisActor->HigHlightActor();
+			ThisActor->HigHlihtActor();
 		}
 		
 	}

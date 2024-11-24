@@ -6,9 +6,12 @@
 void AEnemyCharacter::HigHlihtActor()
 {
 	bHighlighted = true;
+	GetMesh()->bRenderCustomDepth = true;
+	GetMesh()->CustomDepthStencilValue = 255;
 }
 
 void AEnemyCharacter::UnHigHlightActor()
 {
 	bHighlighted = false;
+	GetMesh()->bRenderCustomDepth = false;
 }
