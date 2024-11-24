@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Interation/EnemyInterface.h"
 #include "AuraPlayerController.generated.h"
 
 
@@ -20,6 +21,7 @@ class AURA_API AAuraPlayerController : public APlayerController
 	GENERATED_BODY()
 public:
 	AAuraPlayerController();
+	virtual void Tick(float DeltaTime) override;
 protected:
 	virtual void BeginPlay() override;
 	//设置输入组件
@@ -36,4 +38,12 @@ private:
 
 	//移动事件,传入默认输入操作（InputActionValue）
 	void Move(const  FInputActionValue & InputActionValue);
+
+	//检查鼠标下演员
+	void CursorTrace();
+
+	
+	IEnemyInterface * LastActor;
+	IEnemyInterface * ThisActor;
+
 };

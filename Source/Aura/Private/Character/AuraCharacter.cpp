@@ -23,3 +23,5 @@ AAuraCharacter::AAuraCharacter()
 	//使用控制器旋转Yaw关闭
 	bUseControllerRotationYaw = false;
 }
+
+
