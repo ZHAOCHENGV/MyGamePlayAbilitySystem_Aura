@@ -14,7 +14,7 @@ UCLASS()
 class AURA_API AEnemyCharacter : public ACharacterBase,public IEnemyInterface
 {
 	GENERATED_BODY()
-	
+public:
 	//重载接口的 突出演员 事件
 	virtual void HigHlihtActor()override ;
 	//重载接口的 不突出演员 事件

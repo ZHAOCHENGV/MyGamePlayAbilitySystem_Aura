@@ -94,7 +94,21 @@ void AAuraPlayerController::CursorTrace()
 	//获取继承接口的Actor  
 	ThisActor = Cast<IEnemyInterface>(CuresorHit.GetActor());
 
-	/*
+	//新版光标追踪，更简洁明了
+	if(LastActor != ThisActor)
+	{
+		if (LastActor)
+		{
+			LastActor->UnHigHlightActor();
+			
+		}
+		if (ThisActor)
+		{
+			ThisActor->HigHlightActor();
+		}
+		
+	}
+	/*		旧版光标追踪
 	*       光标开始跟踪。有几种情况：
 		A.如果LastActor为空，ThisActor为空
 			-不采取任何操作。
@@ -106,9 +120,7 @@ void AAuraPlayerController::CursorTrace()
 			-取消最后一个Actor并突出这个Actor。
 		E.如果两个Actor都有效并且它们是同一Actor
 			-不采取任何行动。
-	 * 
-	 */
-
+	
 	if(LastActor == nullptr)
 	{
 		if(ThisActor != nullptr)
@@ -149,5 +161,7 @@ void AAuraPlayerController::CursorTrace()
 			}
 		}
 	}
-		
+	* 
+	 */
+
 }
