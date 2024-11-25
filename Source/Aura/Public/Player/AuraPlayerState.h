@@ -24,7 +24,7 @@ public:
 	UAttributeSet * GetAttributeSet()const{return AttributeSet;}
 protected:	
 	//构建GAS组件
-	UPROPERTY()
+	UPROPERTY(VisibleAnywhere)
 	TObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;
 	//构建GAS属性
 	UPROPERTY()
