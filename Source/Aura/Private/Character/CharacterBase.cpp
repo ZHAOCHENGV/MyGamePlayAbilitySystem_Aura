@@ -14,6 +14,12 @@ ACharacterBase::ACharacterBase()
 
 }
 
+//获取使用的GAS组件
+UAbilitySystemComponent* ACharacterBase::GetAbilitySystemComponent() const
+{
+	return AbilitySystemComponent;
+}
+
 
 void ACharacterBase::BeginPlay()
 {
