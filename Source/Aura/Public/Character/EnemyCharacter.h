@@ -20,6 +20,8 @@ public:
 	virtual void HigHlihtActor()override ;
 	//重载接口的 不突出演员 事件
 	virtual void UnHigHlightActor()override;
+protected:
+	virtual void BeginPlay() override;
 
 	
 };

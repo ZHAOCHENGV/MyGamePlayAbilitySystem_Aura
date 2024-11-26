@@ -20,6 +20,7 @@ AEnemyCharacter::AEnemyCharacter()
 	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Minimal);
 	//创建AttributeSet属性集合
 	AttributeSet = CreateDefaultSubobject<UAuraAttributeSet>("AttributeSet");
+
 	
 }
 
@@ -37,5 +38,12 @@ void AEnemyCharacter::UnHigHlightActor()
 	
 	GetMesh()->SetRenderCustomDepth(false);
 	Weapon->SetRenderCustomDepth(false);
+}
+
+void AEnemyCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+	//设置拥有者Owner Actor和Avater actor 为自身
+	AbilitySystemComponent->InitAbilityActorInfo(this,this);
 }
  

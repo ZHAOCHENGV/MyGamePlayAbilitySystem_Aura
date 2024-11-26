@@ -21,9 +21,16 @@ AAuraPlayerState::AAuraPlayerState()
 	//创建AttributeSet属性集合
 	AttributeSet = CreateDefaultSubobject<UAuraAttributeSet>("AttributeSet");
 	
+	
 }
 
 UAbilitySystemComponent* AAuraPlayerState::GetAbilitySystemComponent() const
 {
 	return AbilitySystemComponent;
+}
+
+void AAuraPlayerState::BeginPlay()
+{
+	Super::BeginPlay();
+	
 }

@@ -29,5 +29,6 @@ protected:
 	//构建GAS属性
 	UPROPERTY()
 	TObjectPtr<UAttributeSet> AttributeSet;
+	virtual void BeginPlay() override;
 
 };
