@@ -19,7 +19,7 @@ public:
 
 	//声明小部件
 	UPROPERTY()
-	TObjectPtr<UAuraUserWidget> Widget;
+	TObjectPtr<UAuraUserWidget> OverlayWidget;
 
 protected:
 	virtual void BeginPlay() override;
