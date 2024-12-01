@@ -6,6 +6,7 @@
 #include "AbilitySystemComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Player/AuraPlayerState.h"
+#include "UI/HUD/AuraHUD.h"
 
 AAuraCharacter::AAuraCharacter()
 {
@@ -34,7 +35,9 @@ AAuraCharacter::AAuraCharacter()
 void AAuraCharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
+
 	InitAbilityActorInfo();
+	
 }
 
 //重写 OnRep_PlayerState ，在网络同步时，PlayerState 属性被复制（Replicated）到客户端时调用。
@@ -59,6 +62,13 @@ void AAuraCharacter::InitAbilityActorInfo()
 	//初始化自身的AbilitySystemComponent和AttributeSet
 	AbilitySystemComponent = AuraPlayerState->GetAbilitySystemComponent();
 	AttributeSet = AuraPlayerState->GetAttributeSet();
+	
+	//获取控制器
+	APlayerController * PlayerController = AuraPlayerState->GetPlayerController();
+	//初始化控件
+	HUD->InitOverlay(PlayerController,AuraPlayerState,AbilitySystemComponent,AttributeSet);
+
+	
 }
 
 

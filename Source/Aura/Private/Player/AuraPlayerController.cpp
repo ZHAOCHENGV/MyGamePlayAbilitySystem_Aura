@@ -6,10 +6,12 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 
+
 AAuraPlayerController::AAuraPlayerController()
 {
 	//网络复制
 	bReplicates = true;
+	
 }
 
 void AAuraPlayerController::Tick(float DeltaTime)

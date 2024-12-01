@@ -7,6 +7,7 @@
 #include "AuraPlayerController.generated.h"
 
 
+class AAuraHUD;
 class UInputMappingContext;
 class UInputAction;
 //struct定义FInputActionValue这是一个结构体
@@ -22,6 +23,7 @@ class AURA_API AAuraPlayerController : public APlayerController
 public:
 	AAuraPlayerController();
 	virtual void Tick(float DeltaTime) override;
+	
 protected:
 	virtual void BeginPlay() override;
 	//设置输入组件
@@ -41,6 +43,7 @@ private:
 
 	//检查鼠标下演员
 	void CursorTrace();
+
 
 	
 	IEnemyInterface * LastActor;

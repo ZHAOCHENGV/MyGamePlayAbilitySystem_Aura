@@ -6,6 +6,7 @@
 #include "Character/CharacterBase.h"
 #include "AuraCharacter.generated.h"
 
+class AAuraHUD;
 /**
  * 
  */
@@ -23,5 +24,8 @@ public:
 private:
 	//设置拥有者Owner Actor和Avater actor 
 	void InitAbilityActorInfo();
+
+	UPROPERTY()
+	AAuraHUD* HUD;
 	
 };
