@@ -10,7 +10,7 @@ void UOverlayWidgetController::BroadcastInitialValues()
 {
 	UAuraAttributeSet * AuraAttributeSet = Cast<UAuraAttributeSet>(AttributeSet);
 	//广播初始值
-	OnHealthChangeds.Broadcast(AuraAttributeSet->GetHealth());
-	OnMaxHealthChangeds.Broadcast(AuraAttributeSet->GetMaxHealth());
+	OnHealthChanged.Broadcast(AuraAttributeSet->GetHealth());
+	OnMaxHealthChanged.Broadcast(AuraAttributeSet->GetMaxHealth());
 
 }

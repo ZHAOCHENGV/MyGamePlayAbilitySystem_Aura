@@ -29,8 +29,8 @@ public:
 
 	//BlueprintAssignable,仅用于多播委托，标记这些属性可以在蓝图中绑定事件。当健康值或最大健康值改变时，蓝图中绑定的函数会被调用。
 	UPROPERTY(BlueprintAssignable, Category ="GAS|Attributes")
-	FOnHealthChangedSignature OnHealthChangeds;
+	FOnHealthChangedSignature OnHealthChanged;
 	UPROPERTY(BlueprintAssignable, Category ="GAS|Attributes")
-	FOnMaxHealtChangedSignature OnMaxHealthChangeds;
+	FOnMaxHealtChangedSignature OnMaxHealthChanged;
 	
 };
