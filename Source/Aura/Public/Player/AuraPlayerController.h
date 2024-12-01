@@ -43,10 +43,9 @@ private:
 
 	//检查鼠标下演员
 	void CursorTrace();
+ 
 
-
-	
-	IEnemyInterface * LastActor;
-	IEnemyInterface * ThisActor;
+	TScriptInterface<IEnemyInterface>LastActor;
+	TScriptInterface<IEnemyInterface>ThisActor;
 
 };

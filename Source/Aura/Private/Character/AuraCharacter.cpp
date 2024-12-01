@@ -64,11 +64,13 @@ void AAuraCharacter::InitAbilityActorInfo()
 	AbilitySystemComponent = AuraPlayerState->GetAbilitySystemComponent();
 	AttributeSet = AuraPlayerState->GetAttributeSet();
 	
-	//获取控制器
-	if (AAuraPlayerController * AuraPlayerController = Cast<AAuraPlayerController>(GetController());)
+	//获取控制器是否有效
+	if (AAuraPlayerController * AuraPlayerController = Cast<AAuraPlayerController>(GetController()))
 	{
+		//获取HUD是否有效
 		if (AAuraHUD * AuraHUD = Cast<AAuraHUD>(AuraPlayerController->GetHUD()))
 		{
+			//有效则初始化重叠HUD
 			AuraHUD->InitOverlay(AuraPlayerController,AuraPlayerState,AbilitySystemComponent,AttributeSet);
 		}
 	}

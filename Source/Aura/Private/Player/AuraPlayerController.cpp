@@ -94,7 +94,7 @@ void AAuraPlayerController::CursorTrace()
 	if(!CuresorHit.bBlockingHit)return;
 	LastActor = ThisActor;
 	//获取继承接口的Actor  
-	ThisActor = Cast<IEnemyInterface>(CuresorHit.GetActor());
+	ThisActor =CuresorHit.GetActor();
 
 	//新版光标追踪，更简洁明了
 	if(LastActor != ThisActor)
