@@ -25,7 +25,5 @@ private:
 	//设置拥有者Owner Actor和Avater actor 
 	void InitAbilityActorInfo();
 
-	UPROPERTY()
-	AAuraHUD* HUD;
 	
 };
