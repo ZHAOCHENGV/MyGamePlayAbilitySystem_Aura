@@ -6,6 +6,10 @@
 #include "GameFramework/HUD.h"
 #include "AuraHUD.generated.h"
 
+class UAttributeSet;
+class UAbilitySystemComponent;
+struct FWidgetControllerParams;
+class UOverlayWidgetController;
 class UAuraUserWidget;
 /**
  * 
@@ -21,13 +25,27 @@ public:
 	UPROPERTY()
 	TObjectPtr<UAuraUserWidget> OverlayWidget;
 
+	//获取重叠控件控制器
+	UOverlayWidgetController * GetOverlayWidgetController(const FWidgetControllerParams& WCParams);
+
+	//初始化 UI 控件
+	void InitOverlay(APlayerController * PC,APlayerState* APS,UAbilitySystemComponent * ASC,UAttributeSet * AS);
+
 protected:
-	virtual void BeginPlay() override;
+	
 
 private:
 
 	//声明覆层控件类
 	UPROPERTY(EditAnywhere)
 	TSubclassOf<UAuraUserWidget> OverlayWidgetClass;
+
+	//声明重叠控件控制器
+	UPROPERTY()
+	TObjectPtr<UOverlayWidgetController> OverlayWidgetController;
+
+	//声明重叠控件控制器类
+	UPROPERTY(EditAnywhere)
+	TSubclassOf<UOverlayWidgetController> OverlayWidgetControllerClass;
 	
 };
