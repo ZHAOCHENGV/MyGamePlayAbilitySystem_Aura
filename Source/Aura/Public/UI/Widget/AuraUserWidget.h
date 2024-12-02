@@ -16,6 +16,7 @@ class AURA_API UAuraUserWidget : public UUserWidget
 public:
 	//BlueprintCallable  蓝图可调用函数
 	UFUNCTION(BlueprintCallable)
+	//设置控件控制器
 	void SetWidgetController(UObject* InWidgetController);
 
 	UPROPERTY(BlueprintReadOnly)
@@ -24,6 +25,7 @@ public:
 protected:
 	//BlueprintImplementableEvent  蓝图可实现的事件
 	UFUNCTION(BlueprintImplementableEvent)
+	//控件控制器设置
 	void WidgetControllerSet();
 	
 };
