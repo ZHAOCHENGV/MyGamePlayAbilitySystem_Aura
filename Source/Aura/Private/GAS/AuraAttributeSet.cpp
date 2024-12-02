@@ -11,7 +11,7 @@ UAuraAttributeSet::UAuraAttributeSet()
 	//ATTRIBUTE_ACCESSORS宏自动创建的初始化函数
 	InitHealth(50.f);
 	InitMaxHealth(100.f);
-	InitMana(20.f);
+	InitMana(100.f);
 	InitMaxMana(100.f);
 	
 }

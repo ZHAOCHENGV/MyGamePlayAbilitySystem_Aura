@@ -47,10 +47,11 @@ protected:
 
 	//最大健康值改变的回调函数
 	void MaxHealthChanged(const FOnAttributeChangeData& Data)const;
-	
+
+	//魔法值改变的回调函数
 	void ManaChanged(const FOnAttributeChangeData& Data)const;
 
-	//最大健康值改变的回调函数
+	//最大魔法值改变的回调函数
 	void MaxManaChanged(const FOnAttributeChangeData& Data)const;
 	
 };

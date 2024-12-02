@@ -43,7 +43,7 @@ void UOverlayWidgetController::BindCallbacksToDependencies()
 	.AddUObject(this,&UOverlayWidgetController::ManaChanged);
 
 	// 绑定 MaxMana 属性变化的回调
-	AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(AuraAttributeSet->GetMaxHealthAttribute())
+	AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(AuraAttributeSet->GetMaxManaAttribute())
 	.AddUObject(this,&UOverlayWidgetController::MaxManaChanged);
 }
 
