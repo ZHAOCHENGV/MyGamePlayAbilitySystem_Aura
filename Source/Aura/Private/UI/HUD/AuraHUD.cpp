@@ -14,6 +14,9 @@ UOverlayWidgetController* AAuraHUD::GetOverlayWidgetController(const FWidgetCont
 		OverlayWidgetController = NewObject<UOverlayWidgetController>(this,OverlayWidgetControllerClass);
 		// 设置控件控制器的参数
 		OverlayWidgetController->SetWidgetControllerParams(WCParams);
+		// 将回调函数绑定到依赖的属性值变化事件
+		// 绑定后，当属性值（如 Health 或 MaxHealth）发生变化时，回调函数会被触发，更新 UI 或执行其他逻辑
+		OverlayWidgetController->BindCallbacksToDependencies();
 		return OverlayWidgetController;
 	}
 	// 如果已存在控件控制器，则直接返回

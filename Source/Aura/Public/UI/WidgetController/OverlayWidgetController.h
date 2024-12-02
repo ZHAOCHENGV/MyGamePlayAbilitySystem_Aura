@@ -26,11 +26,31 @@ class AURA_API UOverlayWidgetController : public UAuraWidgetController
 public:
 	//广播初始值
 	virtual void BroadcastInitialValues() override;
-
+	// 将回调函数绑定到依赖的属性值变化事件
+	// 绑定后，当属性值（如 Health 或 MaxHealth）发生变化时，回调函数会被触发，更新 UI 或执行其他逻辑
+	virtual void BindCallbacksToDependencies() override;
+	
 	//BlueprintAssignable,仅用于多播委托，标记这些属性可以在蓝图中绑定事件。当健康值或最大健康值改变时，蓝图中绑定的函数会被调用。
 	UPROPERTY(BlueprintAssignable, Category ="GAS|Attributes")
 	FOnHealthChangedSignature OnHealthChanged;
 	UPROPERTY(BlueprintAssignable, Category ="GAS|Attributes")
 	FOnMaxHealtChangedSignature OnMaxHealthChanged;
+	UPROPERTY(BlueprintAssignable, Category ="GAS|Attributes")
+	FOnMaxHealtChangedSignature OnManaChanged;
+	UPROPERTY(BlueprintAssignable, Category ="GAS|Attributes")
+	FOnMaxHealtChangedSignature OnMaxManaChanged;
+
+protected:
+	//健康值改变的回调函数
+	//OnAttributeChangeData 关于属性变化数据
+	void HealthChanged(const FOnAttributeChangeData& Data)const;
+
+	//最大健康值改变的回调函数
+	void MaxHealthChanged(const FOnAttributeChangeData& Data)const;
+	
+	void ManaChanged(const FOnAttributeChangeData& Data)const;
+
+	//最大健康值改变的回调函数
+	void MaxManaChanged(const FOnAttributeChangeData& Data)const;
 	
 };

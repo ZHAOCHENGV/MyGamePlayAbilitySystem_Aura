@@ -9,10 +9,10 @@
 UAuraAttributeSet::UAuraAttributeSet()
 {
 	//ATTRIBUTE_ACCESSORS宏自动创建的初始化函数
-	InitHealth(100.f);
-	InitMaxHealth(GetHealth());
-	InitMana(100.f);
-	InitMaxMana(GetMana());
+	InitHealth(50.f);
+	InitMaxHealth(100.f);
+	InitMana(20.f);
+	InitMaxMana(100.f);
 	
 }
 
