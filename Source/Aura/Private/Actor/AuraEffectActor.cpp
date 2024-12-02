@@ -34,7 +34,7 @@ void AAuraEffectActor::OnOverlap(UPrimitiveComponent* OverlappedComponent, AActo
 		//这行代码的作用是将const UAuraAttributeSet* 类型的指针转换为 UAuraAttributeSet*
 		UAuraAttributeSet * MutableAuraAttributeSet = const_cast<UAuraAttributeSet*>(AuraAttributeSet);
 		MutableAuraAttributeSet->SetHealth(AuraAttributeSet->GetHealth()+25.F);
-		MutableAuraAttributeSet->SetHealth(AuraAttributeSet->GetMana()+25.F);
+		MutableAuraAttributeSet->SetMana(AuraAttributeSet->GetMana()+20.F);
 		Destroy(); 
 	}
 	

@@ -12,8 +12,8 @@
 //float NewMaxHealth：表示当前的最大健康值（MaxHealth）
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnHealthChangedSignature,float,NewHealth);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMaxHealtChangedSignature,float,NewMaxHealth);
-
-
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnManaChangedSignature,float,NewMana);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMaxManaChangedSignature,float,NewMaxMana);
 /**
  * 
  */
@@ -36,9 +36,9 @@ public:
 	UPROPERTY(BlueprintAssignable, Category ="GAS|Attributes")
 	FOnMaxHealtChangedSignature OnMaxHealthChanged;
 	UPROPERTY(BlueprintAssignable, Category ="GAS|Attributes")
-	FOnMaxHealtChangedSignature OnManaChanged;
+	FOnManaChangedSignature OnManaChanged;
 	UPROPERTY(BlueprintAssignable, Category ="GAS|Attributes")
-	FOnMaxHealtChangedSignature OnMaxManaChanged;
+	FOnMaxManaChangedSignature OnMaxManaChanged;
 
 protected:
 	//健康值改变的回调函数
