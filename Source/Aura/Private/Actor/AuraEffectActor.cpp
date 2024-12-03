@@ -42,6 +42,10 @@ void AAuraEffectActor::ApplyEffectToTarget(AActor* TargetActor, TSubclassOf<UGam
 	// EffectSpecHandle.Data.Get从智能指针中提取裸指针。
 	// *EffectSpecHandle.Data.Get()解引用裸指针获取实际对象。
 	TargetASC->ApplyGameplayEffectSpecToSelf(*EffectSpecHandle.Data.Get());
+
+	// 确认销毁逻辑是否被执行
+	UE_LOG(LogTemp, Warning, TEXT("Destroying AuraEffectActor: %s"), *GetName());
+	//销毁
 	Destroy();
 	
 }
