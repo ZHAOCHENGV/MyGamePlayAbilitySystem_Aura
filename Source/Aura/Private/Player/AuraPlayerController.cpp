@@ -27,10 +27,12 @@ void AAuraPlayerController::BeginPlay()
 	check(AuraContext);
 	//获取本地玩家的增强输入子系统
 	UEnhancedInputLocalPlayerSubsystem * Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer());
-	//检查 check(Subsystem)是否非空。如果为空，程序会在这里中断运行。
-	check(Subsystem);
-	//当前玩家添加输入映射上下文,0是最高优先级
-	Subsystem->AddMappingContext(AuraContext,0);
+	if (Subsystem)
+	{
+		//当前玩家添加输入映射上下文,0是最高优先级
+		Subsystem->AddMappingContext(AuraContext, 0);
+	}
+	
 
 	//鼠标指针显示
 	bShowMouseCursor = true;

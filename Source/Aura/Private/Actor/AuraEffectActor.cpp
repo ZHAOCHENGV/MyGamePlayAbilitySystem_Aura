@@ -12,8 +12,6 @@ AAuraEffectActor::AAuraEffectActor()
  	PrimaryActorTick.bCanEverTick = false;
 	//创建根组件
 	SetRootComponent(CreateDefaultSubobject<USceneComponent>(TEXT("ScentRoot")));
-	
-
 
 }
 
@@ -44,6 +42,7 @@ void AAuraEffectActor::ApplyEffectToTarget(AActor* TargetActor, TSubclassOf<UGam
 	// EffectSpecHandle.Data.Get从智能指针中提取裸指针。
 	// *EffectSpecHandle.Data.Get()解引用裸指针获取实际对象。
 	TargetASC->ApplyGameplayEffectSpecToSelf(*EffectSpecHandle.Data.Get());
+	Destroy();
 	
 }
 
