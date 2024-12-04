@@ -2,7 +2,6 @@
 
 
 #include "Actor/AuraEffectActor.h"
-
 #include "AbilitySystemBlueprintLibrary.h"
 #include "GAS/AuraAttributeSet.h"
 
@@ -43,10 +42,7 @@ void AAuraEffectActor::ApplyEffectToTarget(AActor* TargetActor, TSubclassOf<UGam
 	// *EffectSpecHandle.Data.Get()解引用裸指针获取实际对象。
 	TargetASC->ApplyGameplayEffectSpecToSelf(*EffectSpecHandle.Data.Get());
 
-	// 确认销毁逻辑是否被执行
-	UE_LOG(LogTemp, Warning, TEXT("Destroying AuraEffectActor: %s"), *GetName());
-	//销毁  (BUG :: 不会被销毁)
-	Destroy();
+	
 	
 }
 
