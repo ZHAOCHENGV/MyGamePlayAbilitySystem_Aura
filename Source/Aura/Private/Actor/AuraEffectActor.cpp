@@ -8,7 +8,7 @@
 
 
 AAuraEffectActor::AAuraEffectActor()
-{
+{ 
  PrimaryActorTick.bCanEverTick = false;
 
 
