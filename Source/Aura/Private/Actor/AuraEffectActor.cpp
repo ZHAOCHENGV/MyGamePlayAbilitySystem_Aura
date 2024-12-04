@@ -9,7 +9,7 @@
 
 AAuraEffectActor::AAuraEffectActor()
 {
- 	PrimaryActorTick.bCanEverTick = false;
+
 	//创建根组件
 	SetRootComponent(CreateDefaultSubobject<USceneComponent>(TEXT("ScentRoot")));
 
@@ -45,7 +45,7 @@ void AAuraEffectActor::ApplyEffectToTarget(AActor* TargetActor, TSubclassOf<UGam
 
 	// 确认销毁逻辑是否被执行
 	UE_LOG(LogTemp, Warning, TEXT("Destroying AuraEffectActor: %s"), *GetName());
-	//销毁
+	//销毁  (BUG :: 不会被销毁)
 	Destroy();
 	
 }

@@ -22,6 +22,7 @@ protected:
 
 	virtual void BeginPlay() override;
 
+	//游戏效果
 	UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Applied Effects")
 	TSubclassOf<UGameplayEffect> InstantGameplayEffectClass;
 
