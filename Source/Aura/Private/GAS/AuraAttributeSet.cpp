@@ -30,6 +30,31 @@ void UAuraAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 	DOREPLIFETIME_CONDITION_NOTIFY(UAuraAttributeSet,MaxMana,COND_None,REPNOTIFY_Always);
 }
 
+void UAuraAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue)
+{
+	Super::PreAttributeChange(Attribute, NewValue);
+	//如果Attribute值 == 血量
+	if (Attribute == GetHealthAttribute())
+	{
+		//限制这个值得最大最小值
+		NewValue = FMath::Clamp(NewValue,0,GetMaxHealth());
+		UE_LOG(LogTemp,Warning,TEXT("Health : %f"),NewValue);
+	}
+	if (Attribute == GetMaxHealthAttribute())
+	{
+		UE_LOG(LogTemp,Warning,TEXT("MaxHealth : %f"),NewValue);
+	}
+	if (Attribute == GetManaAttribute())
+	{
+		NewValue = FMath::Clamp(NewValue,0,GetMaxMana());
+		UE_LOG(LogTemp,Warning,TEXT("Mana : %f"),NewValue);
+	}
+	if (Attribute == GetMaxManaAttribute())
+	{
+		UE_LOG(LogTemp,Warning,TEXT("MaxMana : %f"),NewValue);
+	}
+}
+
 void UAuraAttributeSet::OnRep_Health(const FGameplayAttributeData& OldHealth) const
 {
 	//处理属性在网络上变化后的通知逻辑。
