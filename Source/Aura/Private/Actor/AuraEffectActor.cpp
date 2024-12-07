@@ -35,7 +35,7 @@ void AAuraEffectActor::ApplyEffectToTarget(AActor* TargetActor, TSubclassOf<UGam
 	// 添加源对象信息（通常是效果的触发者，用于效果溯源）
 	EffectContextHandle.AddSourceObject(this);
 	// 创建效果规范（EffectSpec），定义效果的具体表现（如强度、持续时间等）,1代表效果等级
-	FGameplayEffectSpecHandle EffectSpecHandle = TargetASC->MakeOutgoingSpec(GameplayEffectClass,1.F,EffectContextHandle);
+	FGameplayEffectSpecHandle EffectSpecHandle = TargetASC->MakeOutgoingSpec(GameplayEffectClass,ActorLevel,EffectContextHandle);
 	// 应用效果规范到目标自身
 	// Data是一个 TSharedPtr<FGameplayEffectSpec> 类型的智能指针
 	// EffectSpecHandle.Data.Get从智能指针中提取裸指针。

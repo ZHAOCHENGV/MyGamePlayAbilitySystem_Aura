@@ -53,6 +53,15 @@ protected:
 	UFUNCTION(BlueprintCallable)
 	void OnEndOverlap(AActor * TargetActor);
 
+	
+	//移除效果时销毁？
+	UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Applied Effects")
+	bool bDestroyOnEffectRemoval = false;
+
+	//创建映射容器  FActiveGameplayEffectHandle是key，UAbilitySystemComponent是value
+	//#include "GameplayEffectTypes.h"  解决FActiveGameplayEffectHandle 报错
+	TMap<FActiveGameplayEffectHandle,UAbilitySystemComponent*> ActiveEffectHandles;
+	
 	//即时游戏效果
 	UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Applied Effects")
 	TSubclassOf<UGameplayEffect> InstantGameplayEffectClass;
@@ -76,13 +85,8 @@ protected:
 	//移除效果策略
 	UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Applied Effects")
 	EEffectRemovalPolicy InfiniteEEffectRemovalPolicy = EEffectRemovalPolicy::RemoveOnEndOverlap;
-
-	//移除效果时销毁？
+	
+	//效果等级
 	UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Applied Effects")
-	bool bDestroyOnEffectRemoval = false;
-
-	//创建映射容器  FActiveGameplayEffectHandle是key，UAbilitySystemComponent是value
-	//#include "GameplayEffectTypes.h"  解决FActiveGameplayEffectHandle 报错
-	TMap<FActiveGameplayEffectHandle,UAbilitySystemComponent*> ActiveEffectHandles;
-
+	float ActorLevel = 1.0f;
 };

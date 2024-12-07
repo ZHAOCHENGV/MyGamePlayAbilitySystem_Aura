@@ -3,7 +3,10 @@
 
 #include "GAS/AuraAttributeSet.h"
 
+#include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
+#include "GameplayEffectExtension.h"
+#include "GameFramework/Character.h"
 #include "Net/UnrealNetwork.h"
 
 UAuraAttributeSet::UAuraAttributeSet()
@@ -40,18 +43,64 @@ void UAuraAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute, 
 		NewValue = FMath::Clamp(NewValue,0,GetMaxHealth());
 		UE_LOG(LogTemp,Warning,TEXT("Health : %f"),NewValue);
 	}
-	if (Attribute == GetMaxHealthAttribute())
-	{
-		UE_LOG(LogTemp,Warning,TEXT("MaxHealth : %f"),NewValue);
-	}
+	
 	if (Attribute == GetManaAttribute())
 	{
 		NewValue = FMath::Clamp(NewValue,0,GetMaxMana());
 		UE_LOG(LogTemp,Warning,TEXT("Mana : %f"),NewValue);
 	}
-	if (Attribute == GetMaxManaAttribute())
+	
+}
+
+void UAuraAttributeSet::PostGameplayEffectExecute(const struct FGameplayEffectModCallbackData& Data)
+{
+	Super::PostGameplayEffectExecute(Data);
+	//创建数据结构
+	FEffectProperties Props;
+	//设置效果属性
+	SetEffectProperties(Data,Props);
+	
+}
+
+void UAuraAttributeSet::SetEffectProperties(const struct FGameplayEffectModCallbackData& Data, FEffectProperties& Props)const
+{
+	// 获取Gameplay Effect的上下文句柄
+	Props.EffectContextHandle = Data.EffectSpec.GetContext();
+	// 获取原始施加效果的Ability System Component
+	UAbilitySystemComponent * SourceASC = Props.EffectContextHandle.GetOriginalInstigatorAbilitySystemComponent();
+	// 检查SourceASC和相关的Actor是否有效
+	if (IsValid(Props.SourceASC) && Props.SourceASC->AbilityActorInfo.IsValid() && Props.SourceASC->AbilityActorInfo->AvatarActor.IsValid())
 	{
-		UE_LOG(LogTemp,Warning,TEXT("MaxMana : %f"),NewValue);
+		// 获取施法者的AvatarActor（角色或物体）引用
+		Props.SourceAvatarActor = Props.SourceASC->AbilityActorInfo->AvatarActor.Get();
+		// 获取施法者的Controller
+		Props.SourceController = Props.SourceASC->AbilityActorInfo->PlayerController.Get();
+		// 如果控制器为空，并且AvatarActor有效，则从AvatarActor获取控制器
+		if (Props.SourceController == nullptr && Props.SourceAvatarActor!=nullptr)
+		{
+			if(const APawn* Pawn = Cast<APawn>(Props.SourceAvatarActor))
+			{
+				// 获取Pawn的控制器
+				Props.SourceController = Pawn->GetController();
+			}
+		}
+		// 如果控制器有效，从控制器获取角色信息
+		if(Props.SourceController)
+		{
+			Props.SourceCharacter = Cast<ACharacter>(Props.SourceController->GetPawn());
+		}
+	}
+	// 检查目标的AbilityActorInfo是否有效
+	if (Data.Target.AbilityActorInfo.IsValid() && Data.Target.AbilityActorInfo->AvatarActor.IsValid())
+	{
+		// 获取目标Actor（受到效果的角色或物体）
+		Props.TargetAvatarActor = Data.Target.AbilityActorInfo->AvatarActor.Get();
+		// 获取目标的Controller
+		Props.TargetController = Data.Target.AbilityActorInfo->PlayerController.Get();
+		// 将目标Actor转换为角色
+		Props.TargetCharacter = Cast<ACharacter>(Props.TargetAvatarActor);
+		// 获取目标Actor的Ability System Component
+		Props.TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Props.TargetAvatarActor);
 	}
 }
 
