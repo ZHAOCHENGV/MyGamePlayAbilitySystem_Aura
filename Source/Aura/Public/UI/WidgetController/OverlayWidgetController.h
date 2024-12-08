@@ -6,6 +6,7 @@
 #include "UI/WidgetController/AuraWidgetController.h"
 #include "OverlayWidgetController.generated.h"
 
+class UAuraUserWidget;
 //声明动态委托
 //FOnHealthChangedSignature FOnMaxHealthChangedSignature 两个动态代理类型,分别表示在健康值或最大健康值变化时的事件通知
 //float NewHealth 表示当前的健康值（Health）
@@ -14,6 +15,31 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnHealthChangedSignature,float,NewH
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMaxHealtChangedSignature,float,NewMaxHealth);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnManaChangedSignature,float,NewMana);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMaxManaChangedSignature,float,NewMaxMana);
+
+//创建结构体
+USTRUCT()
+struct FUIWidgetRow:public FTableRowBase
+{
+	GENERATED_BODY()
+
+	//Game标签
+	UPROPERTY(EditAnywhere,BlueprintReadOnly)
+	FGameplaytag MessageTag = FGameplaytag();
+	//文本
+	UPROPERTY(EditAnywhere,BlueprintReadOnly)
+	FText Message = FText();
+	//UI组件
+	UPROPERTY(EditAnywhere,BlueprintReadOnly)
+	TSubclassOf<UAuraUserWidget> MessageWidget;
+	//图片
+	UPROPERTY(EditAnywhere,BlueprintReadOnly)
+	UTexture2D* Image = nullptr;
+	
+};
+
+
+
+
 /**
  * 
  */
@@ -41,6 +67,13 @@ public:
 	FOnMaxManaChangedSignature OnMaxManaChanged;
 
 protected:
+
+	
+	//消息小组件数据表
+	UPROPERTY(EditDefaultsOnly,BlueprintReadOnly,Category="Widget Data")
+	TObjectPtr<UDataTable> MessageWidgetDataTable;
+
+	
 	//健康值改变的回调函数
 	//OnAttributeChangeData 关于属性变化数据
 	void HealthChanged(const FOnAttributeChangeData& Data)const;

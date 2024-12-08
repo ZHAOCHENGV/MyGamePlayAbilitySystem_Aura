@@ -4,6 +4,7 @@
 
 #include "UI/WidgetController/OverlayWidgetController.h"
 
+#include "GAS/AuraAbilitySystemComponent.h"
 #include "GAS/AuraAttributeSet.h"
 
 void UOverlayWidgetController::BroadcastInitialValues()
@@ -45,6 +46,29 @@ void UOverlayWidgetController::BindCallbacksToDependencies()
 	// 绑定 MaxMana 属性变化的回调
 	AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(AuraAttributeSet->GetMaxManaAttribute())
 	.AddUObject(this,&UOverlayWidgetController::MaxManaChanged);
+
+	// EffectAbilityTags自定义类型中定义的一个委托，通常用于广播游戏效果相关事件。
+	// AddLambda 方法将一个 Lambda 表达式（匿名函数）绑定到该委托上，使得每次事件触发时都会执行该 Lambda 表达式。
+	// Lambda 表达式  [捕获列表](参数列表) -> 返回类型 { 函数体 };
+	// 捕获列表 []：决定 Lambda 表达式可以访问的外部变量。如果外部变量在表达式中有引用或拷贝需求，需要在此显式声明。
+	// 参数列表 ()：和普通函数一样，可以接受参数，支持类型定义和默认值。
+	// 返回类型 ->（可选）：如果返回类型能自动推导，可以省略；否则需要显式指定。
+	// 函数体 {}：定义 Lambda 表达式的核心逻辑。
+	Cast<UAuraAbilitySystemComponent>(AbilitySystemComponent)->EffectAbilityTags.AddLambda(
+			// 接收一个 FGameplayTagContainer 类型的引用，包含一组游戏标签。
+			[](const FGameplayTagContainer & AssetTags)
+		{
+			// 循环遍历容器中的标签
+			for (const FGameplayTag& Tag : AssetTags)
+			{
+				//打印标签
+				GEngine->AddOnScreenDebugMessage(-1, 5.0, FColor::Red, FString(Tag.ToString()));
+			}
+
+		}
+
+	);
+	
 }
 
 
