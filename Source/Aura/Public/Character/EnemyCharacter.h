@@ -22,6 +22,8 @@ public:
 	virtual void UnHigHlightActor()override;
 protected:
 	virtual void BeginPlay() override;
-
+	
+	//初始化 能力Actor信息集
+	virtual void InitAbilityActorInfo() override;
 	
 };

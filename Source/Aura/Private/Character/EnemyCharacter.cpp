@@ -43,7 +43,14 @@ void AEnemyCharacter::UnHigHlightActor()
 void AEnemyCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+	InitAbilityActorInfo();
+}
+
+void AEnemyCharacter::InitAbilityActorInfo()
+{
 	//设置拥有者Owner Actor和Avater actor 为自身
 	AbilitySystemComponent->InitAbilityActorInfo(this,this);
+	//获取类型为UAuraAbilitySystemComponent技能组件，并且初始化技能属性集
+	Cast<UAuraAbilitySystemComponent>(AbilitySystemComponent)->AbilityActorInfoSet();
 }
  

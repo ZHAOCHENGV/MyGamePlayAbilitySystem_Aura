@@ -5,6 +5,7 @@
 
 #include "AbilitySystemComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "GAS/AuraAbilitySystemComponent.h"
 #include "Player/AuraPlayerController.h"
 #include "Player/AuraPlayerState.h"
 #include "UI/HUD/AuraHUD.h"
@@ -60,6 +61,8 @@ void AAuraCharacter::InitAbilityActorInfo()
 	check(AuraPlayerState);
 	//获取玩家状态中的ASC组件，并且设置ASC组件的拥有者是玩家状态和代理者是此actor
 	AuraPlayerState->GetAbilitySystemComponent()->InitAbilityActorInfo(AuraPlayerState,this);
+	//获取类型为UAuraAbilitySystemComponent技能组件，并且初始化技能属性集
+	Cast<UAuraAbilitySystemComponent>(AuraPlayerState->GetAbilitySystemComponent())->AbilityActorInfoSet();
 	//初始化自身的AbilitySystemComponent和AttributeSet
 	AbilitySystemComponent = AuraPlayerState->GetAbilitySystemComponent();
 	AttributeSet = AuraPlayerState->GetAttributeSet();

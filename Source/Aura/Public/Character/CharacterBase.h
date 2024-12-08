@@ -29,6 +29,10 @@ public:
 protected:
 	//游戏开始
 	virtual void BeginPlay() override;
+
+	//初始化 能力Actor信息集
+	virtual void InitAbilityActorInfo();
+	
 	//武器
 	UPROPERTY(EditAnywhere,Category="Combat")
 	TObjectPtr<USkeletalMeshComponent> Weapon;
