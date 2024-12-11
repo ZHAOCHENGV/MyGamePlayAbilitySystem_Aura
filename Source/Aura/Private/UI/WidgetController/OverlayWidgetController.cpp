@@ -50,19 +50,36 @@ void UOverlayWidgetController::BindCallbacksToDependencies()
 	// EffectAbilityTags自定义类型中定义的一个委托，通常用于广播游戏效果相关事件。
 	// AddLambda 方法将一个 Lambda 表达式（匿名函数）绑定到该委托上，使得每次事件触发时都会执行该 Lambda 表达式。
 	// Lambda 表达式  [捕获列表](参数列表) -> 返回类型 { 函数体 };
-	// 捕获列表 []：决定 Lambda 表达式可以访问的外部变量。如果外部变量在表达式中有引用或拷贝需求，需要在此显式声明。
+	// 捕获列表 []：决定 Lambda 表达式可以访问的外部变量或成员函数。如果外部变量在表达式中有引用或拷贝需求，需要在此显式声明，内部的成员函数，填写this即可。
 	// 参数列表 ()：和普通函数一样，可以接受参数，支持类型定义和默认值。
 	// 返回类型 ->（可选）：如果返回类型能自动推导，可以省略；否则需要显式指定。
 	// 函数体 {}：定义 Lambda 表达式的核心逻辑。
 	Cast<UAuraAbilitySystemComponent>(AbilitySystemComponent)->EffectAbilityTags.AddLambda(
 			// 接收一个 FGameplayTagContainer 类型的引用，包含一组游戏标签。
-			[](const FGameplayTagContainer & AssetTags)
+			[this](const FGameplayTagContainer & AssetTags)
 		{
 			// 循环遍历容器中的标签
 			for (const FGameplayTag& Tag : AssetTags)
 			{
-				//打印标签
-				GEngine->AddOnScreenDebugMessage(-1, 5.0, FColor::Red, FString(Tag.ToString()));
+				// 创建一个 FGameplayTag 类型的标签并初始化为名为 "Message" 的标签。
+				FGameplayTag MessageTag = FGameplayTag::RequestGameplayTag(FName("Message"));
+				// 检查当前 Tag 是否与 MessageTag 匹配。
+				// - MatchesTag：比较两个标签是否相同，或 Tag 是否是 MessageTag 的父级或子级。
+				// - 返回值：true 表示匹配，false 表示不匹配。
+				if (Tag.MatchesTag(MessageTag))
+				{
+					
+					//打印标签
+					GEngine->AddOnScreenDebugMessage(-1, 5.0, FColor::Red, FString(Tag.ToString()));
+					// 根据标签从 MessageWidgetDataTable 数据表中获取对应的行数据（类型为 FUIWidgetRow）。
+					// - Tag：要查找的标签，表示行的标识。
+					// 返回值：找到的行数据指针，若未找到则返回 nullptr。
+					const FUIWidgetRow* Row =GetDataTableRowByTag<FUIWidgetRow>(MessageWidgetDataTable,Tag);
+					// 如果找到对应的行数据，则通过动态多播委托广播该行的数据。
+					// - MessageWidgetRowSignature：动态多播委托，用于通知其他系统或蓝图。
+					MessageWidgetRowSignature.Broadcast(*Row);
+				}
+				
 			}
 
 		}

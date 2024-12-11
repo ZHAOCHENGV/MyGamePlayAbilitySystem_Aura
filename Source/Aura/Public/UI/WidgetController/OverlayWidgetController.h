@@ -7,14 +7,7 @@
 #include "OverlayWidgetController.generated.h"
 
 class UAuraUserWidget;
-//声明动态委托
-//FOnHealthChangedSignature FOnMaxHealthChangedSignature 两个动态代理类型,分别表示在健康值或最大健康值变化时的事件通知
-//float NewHealth 表示当前的健康值（Health）
-//float NewMaxHealth：表示当前的最大健康值（MaxHealth）
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnHealthChangedSignature,float,NewHealth);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMaxHealtChangedSignature,float,NewMaxHealth);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnManaChangedSignature,float,NewMana);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMaxManaChangedSignature,float,NewMaxMana);
+
 
 //创建结构体 蓝图可用类型
 //FTableRowBase 是虚幻引擎中用于数据表系统的基础结构体。主要原因是为了支持虚幻引擎的数据表（Data Table）功能
@@ -37,6 +30,22 @@ struct FUIWidgetRow:public FTableRowBase
 	UTexture2D* Image = nullptr;
 	
 };
+
+
+//声明动态委托
+//FOnHealthChangedSignature FOnMaxHealthChangedSignature 两个动态代理类型,分别表示在健康值或最大健康值变化时的事件通知
+//float NewHealth 表示当前的健康值（Health）
+//float NewMaxHealth：表示当前的最大健康值（MaxHealth）
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnHealthChangedSignature,float,NewHealth);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMaxHealtChangedSignature,float,NewMaxHealth);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnManaChangedSignature,float,NewMana);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMaxManaChangedSignature,float,NewMaxMana);
+
+
+//声明消息组件行动态多播
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FMessageWidgetRowSignature,FUIWidgetRow,Row);
+
+
 
 
 
@@ -67,10 +76,12 @@ public:
 	UPROPERTY(BlueprintAssignable, Category ="GAS|Attributes")
 	FOnMaxManaChangedSignature OnMaxManaChanged;
 
+	UPROPERTY(BlueprintAssignable, Category ="GAS|Messages")
+	FMessageWidgetRowSignature MessageWidgetRowSignature;
 protected:
 
 	
-	//消息小组件数据表
+	//消息数据表
 	UPROPERTY(EditDefaultsOnly,BlueprintReadOnly,Category="Widget Data")
 	TObjectPtr<UDataTable> MessageWidgetDataTable;
 
@@ -87,5 +98,22 @@ protected:
 
 	//最大魔法值改变的回调函数
 	void MaxManaChanged(const FOnAttributeChangeData& Data)const;
+
+
+	// template<typename T> 模板函数，允许使用任意类型 T 的数据表行结构体
+	//根据标签获取数据表中的行信息
+	template<typename T>
+	T* GetDataTableRowByTag(UDataTable *DataTable,const FGameplayTag &Tag);
+	
 	
 };
+
+template <typename T>
+T* UOverlayWidgetController::GetDataTableRowByTag(UDataTable* DataTable, const FGameplayTag& Tag)
+{
+	// 从指定的数据表中查找行：
+	// - T：表示数据表行的类型，通常是继承自 FTableRowBase 的结构体。
+	// - Tag.GetTagName()：根据标签获取对应的行名。
+	// - TEXT("")：上下文字符串，用于标记调试来源，当前留空。
+	return DataTable->FindRow<T>(Tag.GetTagName(),TEXT(""));
+}
