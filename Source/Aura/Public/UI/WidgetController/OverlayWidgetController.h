@@ -16,15 +16,16 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMaxHealtChangedSignature,float,Ne
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnManaChangedSignature,float,NewMana);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMaxManaChangedSignature,float,NewMaxMana);
 
-//创建结构体
-USTRUCT()
+//创建结构体 蓝图可用类型
+//FTableRowBase 是虚幻引擎中用于数据表系统的基础结构体。主要原因是为了支持虚幻引擎的数据表（Data Table）功能
+USTRUCT(BlueprintType)
 struct FUIWidgetRow:public FTableRowBase
 {
 	GENERATED_BODY()
 
 	//Game标签
 	UPROPERTY(EditAnywhere,BlueprintReadOnly)
-	FGameplaytag MessageTag = FGameplaytag();
+	FGameplayTag MessageTag = FGameplayTag();
 	//文本
 	UPROPERTY(EditAnywhere,BlueprintReadOnly)
 	FText Message = FText();
