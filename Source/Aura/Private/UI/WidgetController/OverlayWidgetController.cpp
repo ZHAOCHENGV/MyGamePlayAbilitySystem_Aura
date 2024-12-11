@@ -69,8 +69,7 @@ void UOverlayWidgetController::BindCallbacksToDependencies()
 				if (Tag.MatchesTag(MessageTag))
 				{
 					
-					//打印标签
-					GEngine->AddOnScreenDebugMessage(-1, 5.0, FColor::Red, FString(Tag.ToString()));
+					
 					// 根据标签从 MessageWidgetDataTable 数据表中获取对应的行数据（类型为 FUIWidgetRow）。
 					// - Tag：要查找的标签，表示行的标识。
 					// 返回值：找到的行数据指针，若未找到则返回 nullptr。
