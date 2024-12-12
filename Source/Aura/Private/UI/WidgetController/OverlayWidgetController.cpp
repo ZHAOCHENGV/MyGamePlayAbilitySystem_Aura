@@ -21,31 +21,58 @@ void UOverlayWidgetController::BroadcastInitialValues()
 
 void UOverlayWidgetController::BindCallbacksToDependencies()
 {
+
+
+	
 	//获取属性集，确保 AttributeSet 被正确转换为 UAuraAttributeSet 类型
 	UAuraAttributeSet * AuraAttributeSet = Cast<UAuraAttributeSet>(AttributeSet);
 
 	/// 绑定属性值变化的回调函数
 	// GetGameplayAttributeValueChangeDelegate 是静态多播委托（Multicast Delegate）。
 	// 当指定的 GameplayAttribute 值发生变化时，会触发该委托，通知所有绑定的回调函数。
-	// 
 	// 使用 AddUObject 方法将成员函数绑定到委托。
 	// AddUObject 适用于单一绑定场景，且能安全地处理 UObject 的生命周期。
 	// 如果需要支持蓝图或序列化，动态多播委托（AddDynamic）会更合适，但性能略低。
 	// 绑定 Health 属性变化的回调
+	//使用Lambda匿名函数，广播委托
 	AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(AuraAttributeSet->GetHealthAttribute())
-	.AddUObject(this,&UOverlayWidgetController::HealthChanged);
+	.AddLambda(
+		[this](const FOnAttributeChangeData& Data)
+		{
+			//健康值属性变化时，广播数据的新值
+			OnHealthChanged.Broadcast(Data.NewValue);
+		}
+	);
 
 	// 绑定 MaxHealth 属性变化的回调
 	AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(AuraAttributeSet->GetMaxHealthAttribute())
-	.AddUObject(this,&UOverlayWidgetController::MaxHealthChanged);
+	.AddLambda(
+		[this](const FOnAttributeChangeData& Data)
+		{
+			//属性变化时，广播数据的新值
+			OnMaxHealthChanged.Broadcast(Data.NewValue);
+		}
+	);
 
 	// 绑定 Mana 属性变化的回调
 	AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(AuraAttributeSet->GetManaAttribute())
-	.AddUObject(this,&UOverlayWidgetController::ManaChanged);
+	.AddLambda(
+		[this](const FOnAttributeChangeData& Data)
+		{
+			//属性变化时，广播数据的新值
+			OnManaChanged.Broadcast(Data.NewValue);
+		}
+	);
 
 	// 绑定 MaxMana 属性变化的回调
 	AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(AuraAttributeSet->GetMaxManaAttribute())
-	.AddUObject(this,&UOverlayWidgetController::MaxManaChanged);
+	.AddLambda(
+		[this](const FOnAttributeChangeData& Data)
+		{
+			//性变化时，广播数据的新值
+			OnMaxManaChanged.Broadcast(Data.NewValue);
+		}
+	);
 
 	// EffectAbilityTags自定义类型中定义的一个委托，通常用于广播游戏效果相关事件。
 	// AddLambda 方法将一个 Lambda 表达式（匿名函数）绑定到该委托上，使得每次事件触发时都会执行该 Lambda 表达式。
@@ -77,6 +104,9 @@ void UOverlayWidgetController::BindCallbacksToDependencies()
 					// 如果找到对应的行数据，则通过动态多播委托广播该行的数据。
 					// - MessageWidgetRowSignature：动态多播委托，用于通知其他系统或蓝图。
 					MessageWidgetRowSignature.Broadcast(*Row);
+
+
+					
 				}
 				
 			}
@@ -88,26 +118,4 @@ void UOverlayWidgetController::BindCallbacksToDependencies()
 }
 
 
-void UOverlayWidgetController::HealthChanged(const FOnAttributeChangeData& Data) const
-{
-	//健康值属性变化时，广播数据的新值
-	OnHealthChanged.Broadcast(Data.NewValue);
-}
 
-void UOverlayWidgetController::MaxHealthChanged(const FOnAttributeChangeData& Data) const
-{
-	//最大健康值属性变化时，广播数据的新值
-	OnMaxHealthChanged.Broadcast(Data.NewValue);
-}
-
-void UOverlayWidgetController::ManaChanged(const FOnAttributeChangeData& Data) const
-{
-	//魔法值属性变化时，广播数据的新值
-	OnManaChanged.Broadcast(Data.NewValue);
-}
-
-void UOverlayWidgetController::MaxManaChanged(const FOnAttributeChangeData& Data) const
-{
-	//最大魔法值属性变化时，广播数据的新值
-	OnMaxManaChanged.Broadcast(Data.NewValue);
-}

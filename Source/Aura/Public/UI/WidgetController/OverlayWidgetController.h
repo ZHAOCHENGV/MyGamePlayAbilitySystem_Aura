@@ -33,13 +33,11 @@ struct FUIWidgetRow:public FTableRowBase
 
 
 //声明动态委托
-//FOnHealthChangedSignature FOnMaxHealthChangedSignature 两个动态代理类型,分别表示在健康值或最大健康值变化时的事件通知
-//float NewHealth 表示当前的健康值（Health）
-//float NewMaxHealth：表示当前的最大健康值（MaxHealth）
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnHealthChangedSignature,float,NewHealth);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMaxHealtChangedSignature,float,NewMaxHealth);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnManaChangedSignature,float,NewMana);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMaxManaChangedSignature,float,NewMaxMana);
+//FOnHealthChangedSignature FOnAttributeChangedSignature 两个动态代理类型,分别表示在健康值或最大健康值变化时的事件通知
+//float NewValue：表示新值
+//float 类型的，可以共用这一个委托
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnAttributeChangedSignature,float,NewValue);
+
 
 
 //声明消息组件行动态多播
@@ -68,13 +66,13 @@ public:
 	
 	//BlueprintAssignable,仅用于多播委托，标记这些属性可以在蓝图中绑定事件。当健康值或最大健康值改变时，蓝图中绑定的函数会被调用。
 	UPROPERTY(BlueprintAssignable, Category ="GAS|Attributes")
-	FOnHealthChangedSignature OnHealthChanged;
+	FOnAttributeChangedSignature OnHealthChanged;
 	UPROPERTY(BlueprintAssignable, Category ="GAS|Attributes")
-	FOnMaxHealtChangedSignature OnMaxHealthChanged;
+	FOnAttributeChangedSignature OnMaxHealthChanged;
 	UPROPERTY(BlueprintAssignable, Category ="GAS|Attributes")
-	FOnManaChangedSignature OnManaChanged;
+	FOnAttributeChangedSignature OnManaChanged;
 	UPROPERTY(BlueprintAssignable, Category ="GAS|Attributes")
-	FOnMaxManaChangedSignature OnMaxManaChanged;
+	FOnAttributeChangedSignature OnMaxManaChanged;
 
 	UPROPERTY(BlueprintAssignable, Category ="GAS|Messages")
 	FMessageWidgetRowSignature MessageWidgetRowSignature;
@@ -86,19 +84,7 @@ protected:
 	TObjectPtr<UDataTable> MessageWidgetDataTable;
 
 	
-	//健康值改变的回调函数
-	//OnAttributeChangeData 关于属性变化数据
-	void HealthChanged(const FOnAttributeChangeData& Data)const;
-
-	//最大健康值改变的回调函数
-	void MaxHealthChanged(const FOnAttributeChangeData& Data)const;
-
-	//魔法值改变的回调函数
-	void ManaChanged(const FOnAttributeChangeData& Data)const;
-
-	//最大魔法值改变的回调函数
-	void MaxManaChanged(const FOnAttributeChangeData& Data)const;
-
+	
 
 	// template<typename T> 模板函数，允许使用任意类型 T 的数据表行结构体
 	//根据标签获取数据表中的行信息
