@@ -35,11 +35,14 @@ void UAuraAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 
 void UAuraAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue)
 {
+	
 	Super::PreAttributeChange(Attribute, NewValue);
 	//如果Attribute值 == 血量
 	if (Attribute == GetHealthAttribute())
 	{
-		//限制这个值得最大最小值
+		//这里的限制是针对查询（NewValue）的值，而不是属性的最终应用值。如果游戏逻辑中有多个地方在修改属性值，而没有使用 PreAttributeChange，则可能导致不一致
+		// 限制健康值在 0 和最大健康值之间
+		// 注意：此处只是在查询时限制值范围，实际应用数值可能在别处修改
 		NewValue = FMath::Clamp(NewValue,0,GetMaxHealth());
 		UE_LOG(LogTemp,Warning,TEXT("Health : %f"),NewValue);
 	}
@@ -59,6 +62,17 @@ void UAuraAttributeSet::PostGameplayEffectExecute(const struct FGameplayEffectMo
 	FEffectProperties Props;
 	//设置效果属性
 	SetEffectProperties(Data,Props);
+	// 数值应用时，限制 "Health" 属性的实际值在 0 和最大健康值之间
+	// 此处直接对 SetHealth 和 SetMana 的结果进行限制，确保最终的属性值在有效范围内。
+	// 这里是在实际应用效果后强制修正属性值，能确保逻辑一致性。
+	if (Data.EvaluatedData.Attribute == GetHealthAttribute())
+	{
+		SetHealth(FMath::Clamp(GetHealth(),0,GetMaxHealth()));
+	}
+	if (Data.EvaluatedData.Attribute == GetManaAttribute())
+	{
+		SetMana(FMath::Clamp(GetMana(),0,GetMaxMana()));
+	}
 	
 }
 
