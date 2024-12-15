@@ -7,12 +7,17 @@
 #include "AttributeSet.h"
 #include "AuraAttributeSet.generated.h"
 
+//这段宏定义通过组合多个功能性宏，快速为指定类和属性生成常见的访问器函数。
 
+//GAMEPLAYATTRIBUTE_PROPERTY_GETTER(ClassName, PropertyName) // 生成 Getter 方法以获取属性对象
+//GAMEPLAYATTRIBUTE_VALUE_GETTER(PropertyName)           // 生成 Getter 方法以获取属性的当前值
+//GAMEPLAYATTRIBUTE_VALUE_SETTER(PropertyName)               // 生成 Setter 方法以设置属性的值
+//GAMEPLAYATTRIBUTE_VALUE_INITTER(PropertyName)                 // 生成初始化方法以设置初始值
 #define ATTRIBUTE_ACCESSORS(ClassName, PropertyName) \
 GAMEPLAYATTRIBUTE_PROPERTY_GETTER(ClassName, PropertyName) \
 GAMEPLAYATTRIBUTE_VALUE_GETTER(PropertyName) \
 GAMEPLAYATTRIBUTE_VALUE_SETTER(PropertyName) \
-GAMEPLAYATTRIBUTE_VALUE_INITTER(PropertyName)
+GAMEPLAYATTRIBUTE_VALUE_INITTER(PropertyName)           
 
 
 
@@ -76,30 +81,49 @@ public:
 	//Gameplay Effect执行后处理函数,该函数主要用于在Gameplay Effect（游戏效果）执行完成后，做一些特定的后处理操作
 	virtual void PostGameplayEffectExecute(const struct FGameplayEffectModCallbackData& Data) override;
 
+	/*
+	 * 主要属性
+	 */
+	//创建力量值
+	// 声明一个只读的属性，支持蓝图和网络同步，标记为“Primary Attributes”分类
+	// ReplicatedUsing=OnRep_Health 表示该变量在客户端更新时会调用 OnRep_Strength 函数
+	UPROPERTY(BlueprintReadOnly,ReplicatedUsing= OnRep_Strength,Category = "Primary Attributes")
+	FGameplayAttributeData Strength;
+	// 使用宏为 Strength 属性生成访问器函数
+	// ATTRIBUTE_ACCESSORS(UAuraAttributeSet, Strength) 会生成如下两个函数：
+	// 1. GetStrength(): 用于获取 Strength 的值
+	// 2. SetStrength(): 用于设置 Strength 的值
+	ATTRIBUTE_ACCESSORS(UAuraAttributeSet,Strength);
+	//创建智力
+	UPROPERTY(BlueprintReadOnly,ReplicatedUsing= OnRep_Intelligence,Category = "Primary Attributes")
+	FGameplayAttributeData Intelligence;
+	ATTRIBUTE_ACCESSORS(UAuraAttributeSet,Intelligence);
+	//创建复原力
+	UPROPERTY(BlueprintReadOnly,ReplicatedUsing= OnRep_Resilience,Category = "Primary Attributes")
+	FGameplayAttributeData Resilience;
+	ATTRIBUTE_ACCESSORS(UAuraAttributeSet,Resilience);
+	//活力
+	UPROPERTY(BlueprintReadOnly,ReplicatedUsing= OnRep_Vigor,Category = "Primary Attributes")
+	FGameplayAttributeData Vigor;
+	ATTRIBUTE_ACCESSORS(UAuraAttributeSet,Vigor);
+
+
 	
 
+	/*
+	 * 重要属性
+	 */
 	//创建健康值 ,ReplicatedUsing = OnRep_Health 指定当该属性在网络上被复制时，它会调用 OnRep_Health 方法来通知任何相关的对象或系统。
 	UPROPERTY(BlueprintReadOnly,ReplicatedUsing= OnRep_Health,Category = "Vital Attributes")
 	FGameplayAttributeData Health;
 	//属性器访问。
 	//这个宏会自动创建初始化，get,set，等方法
 	ATTRIBUTE_ACCESSORS(UAuraAttributeSet,Health);
-	
 	//创建最大健康值 ,ReplicatedUsing = OnRep_MaxHealth,指定当该属性在网络上被复制时，它会调用 OnRep_Health 方法来通知任何相关的对象或系统。
 	UPROPERTY(BlueprintReadOnly,ReplicatedUsing= OnRep_MaxHealth,Category = "Vital Attributes")
 	FGameplayAttributeData MaxHealth;
 	//这个宏会自动创建初始化，get,set，等方法
 	ATTRIBUTE_ACCESSORS(UAuraAttributeSet,MaxHealth);
-
-	//Rep_Health 方法会在 Health 属性在网络上复制并被修改时调用。
-	UFUNCTION()
-	void OnRep_Health(const FGameplayAttributeData& OldHealth) const;
-	
-	//Rep_Health 方法会在 MaxHealth 属性在网络上复制并被修改时调用。
-	UFUNCTION()
-	void OnRep_MaxHealth(const FGameplayAttributeData& OldMaxHealth) const;
-
-
 	//创建魔法值 ,ReplicatedUsing = OnRep_Health 指定当该属性在网络上被复制时，它会调用 OnRep_Health 方法来通知任何相关的对象或系统。
 	UPROPERTY(BlueprintReadOnly,ReplicatedUsing= OnRep_Mana,Category = "Vital Attributes")
 	FGameplayAttributeData Mana;
@@ -112,6 +136,16 @@ public:
 	ATTRIBUTE_ACCESSORS(UAuraAttributeSet,MaxMana);
 
 
+
+
+	//Rep_Health 方法会在 Health 属性在网络上复制并被修改时调用。
+	UFUNCTION()
+	void OnRep_Health(const FGameplayAttributeData& OldHealth) const;
+	
+	//Rep_MaxHealth 方法会在 MaxHealth 属性在网络上复制并被修改时调用。
+	UFUNCTION()
+	void OnRep_MaxHealth(const FGameplayAttributeData& OldMaxHealth) const;
+	
 	
 	//Rep_Health 方法会在 Mana 属性在网络上复制并被修改时调用。
 	UFUNCTION()
@@ -121,7 +155,23 @@ public:
 	UFUNCTION()
 	void OnRep_MaxMana(const FGameplayAttributeData& OldMaxMana) const;
 
+
+	
+	//在客户端力量值更新时会调用 OnRep_Strength 函数
+	UFUNCTION()
+	void OnRep_Strength(const FGameplayAttributeData& OldStrength) const;
+	
+	UFUNCTION()
+	void OnRep_Intelligence(const FGameplayAttributeData& OldIntelligence) const;
+	
+	UFUNCTION()
+	void OnRep_Resilience(const FGameplayAttributeData& OldResilience) const;
+	
+	UFUNCTION()
+	void OnRep_Vigor(const FGameplayAttributeData& OldVigor) const;
+
 private:
+	
 	//设置效果属性
 	void SetEffectProperties(const struct FGameplayEffectModCallbackData& Data,FEffectProperties & Props)const;
 };

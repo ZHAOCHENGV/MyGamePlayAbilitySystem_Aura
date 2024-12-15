@@ -8,6 +8,7 @@
 #include "CharacterBase.generated.h"
 
 
+class UGameplayEffect;
 class UAbilitySystemComponent;
 class UAttributeSet;
 
@@ -43,5 +44,12 @@ protected:
 	//构建GAS属性
 	UPROPERTY()
 	TObjectPtr<UAttributeSet> AttributeSet;
+
+	//创建初始化属性游戏效果
+	UPROPERTY(BlueprintReadOnly,EditAnywhere,Category="Attributes")
+	TSubclassOf<UGameplayEffect> DefaultPrimaryAttributes;
+
+	//初始化主要属性
+	void InitializePrimaryAttributes() const;
 
 };
