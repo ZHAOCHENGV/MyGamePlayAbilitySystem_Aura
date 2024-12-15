@@ -77,8 +77,8 @@ void AAuraCharacter::InitAbilityActorInfo()
 			AuraHUD->InitOverlay(AuraPlayerController,AuraPlayerState,AbilitySystemComponent,AttributeSet);
 		}
 	}
-	//运行初始化主要属性函数
-	InitializePrimaryAttributes();
+	//应用游戏效果，来初始化默认属性
+	InitializeDefaultAttributes();
 
 	
 }

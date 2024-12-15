@@ -98,7 +98,7 @@ public:
 	UPROPERTY(BlueprintReadOnly,ReplicatedUsing= OnRep_Intelligence,Category = "Primary Attributes")
 	FGameplayAttributeData Intelligence;
 	ATTRIBUTE_ACCESSORS(UAuraAttributeSet,Intelligence);
-	//创建复原力
+	//创建韧性
 	UPROPERTY(BlueprintReadOnly,ReplicatedUsing= OnRep_Resilience,Category = "Primary Attributes")
 	FGameplayAttributeData Resilience;
 	ATTRIBUTE_ACCESSORS(UAuraAttributeSet,Resilience);
@@ -106,56 +106,6 @@ public:
 	UPROPERTY(BlueprintReadOnly,ReplicatedUsing= OnRep_Vigor,Category = "Primary Attributes")
 	FGameplayAttributeData Vigor;
 	ATTRIBUTE_ACCESSORS(UAuraAttributeSet,Vigor);
-
-
-	
-
-	/*
-	 * 重要属性
-	 */
-	//创建健康值 ,ReplicatedUsing = OnRep_Health 指定当该属性在网络上被复制时，它会调用 OnRep_Health 方法来通知任何相关的对象或系统。
-	UPROPERTY(BlueprintReadOnly,ReplicatedUsing= OnRep_Health,Category = "Vital Attributes")
-	FGameplayAttributeData Health;
-	//属性器访问。
-	//这个宏会自动创建初始化，get,set，等方法
-	ATTRIBUTE_ACCESSORS(UAuraAttributeSet,Health);
-	//创建最大健康值 ,ReplicatedUsing = OnRep_MaxHealth,指定当该属性在网络上被复制时，它会调用 OnRep_Health 方法来通知任何相关的对象或系统。
-	UPROPERTY(BlueprintReadOnly,ReplicatedUsing= OnRep_MaxHealth,Category = "Vital Attributes")
-	FGameplayAttributeData MaxHealth;
-	//这个宏会自动创建初始化，get,set，等方法
-	ATTRIBUTE_ACCESSORS(UAuraAttributeSet,MaxHealth);
-	//创建魔法值 ,ReplicatedUsing = OnRep_Health 指定当该属性在网络上被复制时，它会调用 OnRep_Health 方法来通知任何相关的对象或系统。
-	UPROPERTY(BlueprintReadOnly,ReplicatedUsing= OnRep_Mana,Category = "Vital Attributes")
-	FGameplayAttributeData Mana;
-	//这个宏会自动创建初始化，get,set，等方法
-	ATTRIBUTE_ACCESSORS(UAuraAttributeSet,Mana);
-	//创建最大魔法值 ,ReplicatedUsing = OnRep_MaxHealth,指定当该属性在网络上被复制时，它会调用 OnRep_Health 方法来通知任何相关的对象或系统。
-	UPROPERTY(BlueprintReadOnly,ReplicatedUsing= OnRep_MaxMana,Category = "Vital Attributes")
-	FGameplayAttributeData MaxMana;
-	//这个宏会自动创建初始化，get,set，等方法
-	ATTRIBUTE_ACCESSORS(UAuraAttributeSet,MaxMana);
-
-
-
-
-	//Rep_Health 方法会在 Health 属性在网络上复制并被修改时调用。
-	UFUNCTION()
-	void OnRep_Health(const FGameplayAttributeData& OldHealth) const;
-	
-	//Rep_MaxHealth 方法会在 MaxHealth 属性在网络上复制并被修改时调用。
-	UFUNCTION()
-	void OnRep_MaxHealth(const FGameplayAttributeData& OldMaxHealth) const;
-	
-	
-	//Rep_Health 方法会在 Mana 属性在网络上复制并被修改时调用。
-	UFUNCTION()
-	void OnRep_Mana(const FGameplayAttributeData& OldMana) const;
-	
-	//Rep_Health 方法会在 MaxMana 属性在网络上复制并被修改时调用。
-	UFUNCTION()
-	void OnRep_MaxMana(const FGameplayAttributeData& OldMaxMana) const;
-
-
 	
 	//在客户端力量值更新时会调用 OnRep_Strength 函数
 	UFUNCTION()
@@ -169,6 +119,108 @@ public:
 	
 	UFUNCTION()
 	void OnRep_Vigor(const FGameplayAttributeData& OldVigor) const;
+
+	
+
+	/*
+	 * 重要属性
+	 */
+	//创建健康值 ,ReplicatedUsing = OnRep_Health 指定当该属性在网络上被复制时，它会调用 OnRep_Health 方法来通知任何相关的对象或系统。
+	UPROPERTY(BlueprintReadOnly,ReplicatedUsing= OnRep_Health,Category = "Vital Attributes")
+	FGameplayAttributeData Health;
+	//属性器访问。
+	//这个宏会自动创建初始化，get,set，等方法
+	ATTRIBUTE_ACCESSORS(UAuraAttributeSet,Health);
+	
+	//创建魔法值 ,ReplicatedUsing = OnRep_Health 指定当该属性在网络上被复制时，它会调用 OnRep_Health 方法来通知任何相关的对象或系统。
+	UPROPERTY(BlueprintReadOnly,ReplicatedUsing= OnRep_Mana,Category = "Vital Attributes")
+	FGameplayAttributeData Mana;
+	//这个宏会自动创建初始化，get,set，等方法
+	ATTRIBUTE_ACCESSORS(UAuraAttributeSet,Mana);
+	
+
+	//Rep_Health 方法会在 Health 属性在网络上复制并被修改时调用。
+	UFUNCTION()
+	void OnRep_Health(const FGameplayAttributeData& OldHealth) const;
+	
+	//Rep_Health 方法会在 Mana 属性在网络上复制并被修改时调用。
+	UFUNCTION()
+	void OnRep_Mana(const FGameplayAttributeData& OldMana) const;
+
+
+
+
+	
+	/*
+	 * 次要属性
+	 */
+	//护甲，派生自Resilience，减少伤害提高格挡伤害
+	UPROPERTY(BlueprintReadOnly,ReplicatedUsing= OnRep_Armor,Category = "Secondary Attributes")
+	FGameplayAttributeData Armor;
+	ATTRIBUTE_ACCESSORS(UAuraAttributeSet,Armor);
+	//护甲穿透，派生自Resilience，忽略敌方护甲百分比，增加暴击率
+	UPROPERTY(BlueprintReadOnly,ReplicatedUsing= OnRep_ArmorPenetrion,Category = "Secondary Attributes")
+	FGameplayAttributeData ArmorPenetrion;
+	ATTRIBUTE_ACCESSORS(UAuraAttributeSet,ArmorPenetrion);
+	//阻挡几率，派生自Armor，有几率把伤害减半
+	UPROPERTY(BlueprintReadOnly,ReplicatedUsing= OnRep_BlockChance,Category = "Secondary Attributes")
+	FGameplayAttributeData BlockChance;
+	ATTRIBUTE_ACCESSORS(UAuraAttributeSet,BlockChance);
+	//暴击率，派生自ArmorPenetrion，几率使伤害和暴击加成加倍
+	UPROPERTY(BlueprintReadOnly,ReplicatedUsing= OnRep_CriticalHitChance,Category = "Secondary Attributes")
+	FGameplayAttributeData CriticalHitChance;
+	ATTRIBUTE_ACCESSORS(UAuraAttributeSet,CriticalHitChance);
+	//暴击伤害，派生自ArmorPenetrion，暴击增加额外伤害
+	UPROPERTY(BlueprintReadOnly,ReplicatedUsing= OnRep_CriticalHitDamage,Category = "Secondary Attributes")
+	FGameplayAttributeData CriticalHitDamage;
+	ATTRIBUTE_ACCESSORS(UAuraAttributeSet,CriticalHitDamage);
+	//暴击抗性，派生自Armor，降低敌人暴击的几率
+	UPROPERTY(BlueprintReadOnly,ReplicatedUsing= OnRep_CriticalHitResistance,Category = "Secondary Attributes")
+	FGameplayAttributeData CriticalHitResistance;
+	ATTRIBUTE_ACCESSORS(UAuraAttributeSet,CriticalHitResistance);
+	//生命恢复，派生自Vigor，每秒恢复的生命值
+	UPROPERTY(BlueprintReadOnly,ReplicatedUsing= OnRep_HealthRegeneration,Category = "Secondary Attributes")
+	FGameplayAttributeData HealthRegeneration;
+	ATTRIBUTE_ACCESSORS(UAuraAttributeSet,HealthRegeneration);
+	//法力恢复，派生自Intelligence，每秒恢复的法力值
+	UPROPERTY(BlueprintReadOnly,ReplicatedUsing= OnRep_ManaRegeneration,Category = "Secondary Attributes")
+	FGameplayAttributeData ManaRegeneration;
+	ATTRIBUTE_ACCESSORS(UAuraAttributeSet,ManaRegeneration);
+	//创建最大健康值 ,ReplicatedUsing = OnRep_MaxHealth,指定当该属性在网络上被复制时，它会调用 OnRep_Health 方法来通知任何相关的对象或系统。
+	UPROPERTY(BlueprintReadOnly,ReplicatedUsing= OnRep_MaxHealth,Category = "Secondary Attributes")
+	FGameplayAttributeData MaxHealth;
+	//这个宏会自动创建初始化，get,set，等方法
+	ATTRIBUTE_ACCESSORS(UAuraAttributeSet,MaxHealth);
+	//创建最大魔法值 ,ReplicatedUsing = OnRep_MaxHealth,指定当该属性在网络上被复制时，它会调用 OnRep_Health 方法来通知任何相关的对象或系统。
+	UPROPERTY(BlueprintReadOnly,ReplicatedUsing= OnRep_MaxMana,Category = "Secondary Attributes")
+	FGameplayAttributeData MaxMana;
+	//这个宏会自动创建初始化，get,set，等方法
+	ATTRIBUTE_ACCESSORS(UAuraAttributeSet,MaxMana);
+
+	UFUNCTION()
+	void OnRep_Armor(const FGameplayAttributeData& OldArmor) const;
+	UFUNCTION()
+	void OnRep_ArmorPenetrion(const FGameplayAttributeData& OldArmorPenetrion) const;
+	UFUNCTION()
+	void OnRep_BlockChance(const FGameplayAttributeData& OldBlockChance) const;
+	UFUNCTION()
+	void OnRep_CriticalHitChance(const FGameplayAttributeData& OldCriticalHitChance) const;
+	UFUNCTION()
+	void OnRep_CriticalHitDamage(const FGameplayAttributeData& OldCriticalHitDamage) const;
+	UFUNCTION()
+	void OnRep_CriticalHitResistance(const FGameplayAttributeData& OldCriticalHitResistance) const;
+	UFUNCTION()
+	void OnRep_HealthRegeneration(const FGameplayAttributeData& OldHealthRegeneration) const;
+	UFUNCTION()
+	void OnRep_ManaRegeneration(const FGameplayAttributeData& OldManaRegeneration) const;
+	UFUNCTION()
+	void OnRep_MaxHealth(const FGameplayAttributeData& OldMaxHealth) const;
+	UFUNCTION()
+	void OnRep_MaxMana(const FGameplayAttributeData& OldMaxMana) const;
+
+
+	
+	
 
 private:
 	
