@@ -5,6 +5,7 @@
 
 #include "GAS/AuraAbilitySystemComponent.h"
 #include "GAS/AuraAttributeSet.h"
+#include "Net/UnrealNetwork.h"
 
 AAuraPlayerState::AAuraPlayerState()
 
@@ -24,6 +25,16 @@ AAuraPlayerState::AAuraPlayerState()
 	
 }
 
+void AAuraPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	//Doreplifetime  注册Level属性的同步规则
+	DOREPLIFETIME(AAuraPlayerState,Level);
+	
+
+}
+
+
 UAbilitySystemComponent* AAuraPlayerState::GetAbilitySystemComponent() const
 {
 	return AbilitySystemComponent;
@@ -34,3 +45,9 @@ void AAuraPlayerState::BeginPlay()
 	Super::BeginPlay();
 	
 }
+
+void AAuraPlayerState::OnRep_Level(int32 OldLevel)
+{
+	
+}
+
