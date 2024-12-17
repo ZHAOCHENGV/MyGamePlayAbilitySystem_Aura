@@ -39,8 +39,12 @@ void ACharacterBase::InitAbilityActorInfo()
 // 初始化角色的默认属性
 void ACharacterBase::InitializeDefaultAttributes() const
 {
+	//初始化主要属性
 	ApplyEffectToSelf(DefaultPrimaryAttributes,1.f);
+	//初始化次要属性
 	ApplyEffectToSelf(DefaultSecondaryAttributes,1.f);
+	//初始化重要属性
+	ApplyEffectToSelf(DefaultSignificantAttributes,1.f);
 }
 
 void ACharacterBase::ApplyEffectToSelf(TSubclassOf<UGameplayEffect> GamePlayEffectClass, float Level) const

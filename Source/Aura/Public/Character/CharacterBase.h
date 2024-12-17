@@ -52,6 +52,9 @@ protected:
 	//创建默认次要属性
 	UPROPERTY(BlueprintReadOnly,EditAnywhere,Category="Attributes")
 	TSubclassOf<UGameplayEffect> DefaultSecondaryAttributes;
+	//创建默认次要属性
+	UPROPERTY(BlueprintReadOnly,EditAnywhere,Category="Attributes")
+	TSubclassOf<UGameplayEffect> DefaultSignificantAttributes;
 	
 	//初始化默认属性
 	void InitializeDefaultAttributes() const;
