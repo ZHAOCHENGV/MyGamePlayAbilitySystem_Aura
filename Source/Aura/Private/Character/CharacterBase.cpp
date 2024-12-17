@@ -50,7 +50,9 @@ void ACharacterBase::ApplyEffectToSelf(TSubclassOf<UGameplayEffect> GamePlayEffe
 	// 检查 GameEffectClass 是否被设置
 	check(GamePlayEffectClass);
 	// 创建一个 Gameplay Effect 的上下文，通常用于指定应用效果的目标信息
-	const FGameplayEffectContextHandle ContextHandle = GetAbilitySystemComponent()->MakeEffectContext();
+	FGameplayEffectContextHandle ContextHandle = GetAbilitySystemComponent()->MakeEffectContext();
+	//添加源对象
+	ContextHandle.AddSourceObject(this);
 	// 创建一个用于应用的 Gameplay Effect Spec，这里使用 GameEffectClass 作为默认效果，Level为强度，ContextHandle 为上下文
 	const FGameplayEffectSpecHandle SpecHandle = GetAbilitySystemComponent()->MakeOutgoingSpec(GamePlayEffectClass,Level,ContextHandle);
 	// 应用这个效果到当前的 Ability System 组件（目标为当前角色）
