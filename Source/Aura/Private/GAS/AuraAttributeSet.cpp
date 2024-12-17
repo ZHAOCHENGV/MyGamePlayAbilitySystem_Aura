@@ -11,10 +11,8 @@
 
 UAuraAttributeSet::UAuraAttributeSet()
 {
-	//ATTRIBUTE_ACCESSORS宏自动创建的初始化函数
-	InitHealth(50.f);
-	InitMana(20.f);
 
+	
 }
 
 void UAuraAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

@@ -31,5 +31,5 @@ float UMMC_MaxMana::CalculateBaseMagnitude_Implementation(const FGameplayEffectS
 	// 获取玩家等级
 	const int32 PlayerLevel = CombatInterface->GetPlayerLevel();
 	// 根据体力和玩家等级计算最大生命值并返回
-	return 30.f + 2.5f * Intelligence + 5.f * PlayerLevel;
+	return 50.f + 2.5f * Intelligence + 15.f * PlayerLevel;
 }
