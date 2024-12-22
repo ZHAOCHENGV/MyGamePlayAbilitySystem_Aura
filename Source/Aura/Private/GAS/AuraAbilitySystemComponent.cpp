@@ -3,11 +3,16 @@
 
 #include "GAS/AuraAbilitySystemComponent.h"
 
+#include "AuraGamePlayTags.h"
+
 void UAuraAbilitySystemComponent::AbilityActorInfoSet()
 {
 	// 将 OnGameplayEffectAppliedDelegateToSelf 事件委托绑定到当前对象（this）和 EffectApplied() 函数。
 	// 这意味着当 Gameplay Effect 被应用于该组件时，会调用 EffectApplied() 函数。
 	OnGameplayEffectAppliedDelegateToSelf.AddUObject(this,&UAuraAbilitySystemComponent::EffectApplied);
+
+	const FAuraGamePlayTags & GamePlayTags = FAuraGamePlayTags::Get();
+	GEngine->AddOnScreenDebugMessage(-1, 5.0, FColor::Red, FString::Printf(TEXT("标签：%s"),*GamePlayTags.Attributes_Secondary_Armor.ToString()));
 }
 
 void UAuraAbilitySystemComponent::EffectApplied(UAbilitySystemComponent* AbilitySystemComponent,
