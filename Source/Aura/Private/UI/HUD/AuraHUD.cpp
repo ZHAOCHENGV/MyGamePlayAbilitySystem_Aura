@@ -2,7 +2,10 @@
 
 
 #include "UI/HUD/AuraHUD.h"
+
+#include "../../../../../../../../../../../Program Files/Epic Games/UE_5.4/Engine/Plugins/Animation/ACLPlugin/Source/ThirdParty/acl/external/rtm/includes/rtm/types.h"
 #include "UI/Widget/AuraUserWidget.h"
+#include "UI/WidgetController/AttributeMenuWidgetController.h"
 #include "UI/WidgetController/OverlayWidgetController.h"
 
 UOverlayWidgetController* AAuraHUD::GetOverlayWidgetController(const FWidgetControllerParams& WCParams)
@@ -17,10 +20,25 @@ UOverlayWidgetController* AAuraHUD::GetOverlayWidgetController(const FWidgetCont
 		// 将回调函数绑定到依赖的属性值变化事件
 		// 绑定后，当属性值（如 Health 或 MaxHealth）发生变化时，回调函数会被触发，更新 UI 或执行其他逻辑
 		OverlayWidgetController->BindCallbacksToDependencies();
-		return OverlayWidgetController;
 	}
 	// 如果已存在控件控制器，则直接返回
 	return OverlayWidgetController;
+}
+
+UAttributeMenuWidgetController* AAuraHUD::GetAttributeMenuWidgetController(const FWidgetControllerParams& WCParams)
+{
+	// 如果没有创建过控件对象，则创建一个新的
+	if (AttributeMenuWidgetController == nullptr)
+	{
+		// 创建一个新的 UAttributeMenuWidgetController 对象
+		AttributeMenuWidgetController = NewObject<UAttributeMenuWidgetController>(this,AttributeMenuWidgetControllerClass);
+		// 设置控件的参数
+		AttributeMenuWidgetController->SetWidgetControllerParams(WCParams);
+		// 绑定控件的回调依赖关系
+		AttributeMenuWidgetController->BindCallbacksToDependencies();
+	}
+	// 返回控件对象
+	return AttributeMenuWidgetController;
 }
 
 void AAuraHUD::InitOverlay(APlayerController* PC, APlayerState* PS, UAbilitySystemComponent* ASC, UAttributeSet* AS)
