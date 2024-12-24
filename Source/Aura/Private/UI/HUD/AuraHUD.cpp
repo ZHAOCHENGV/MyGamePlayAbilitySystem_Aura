@@ -3,6 +3,7 @@
 
 #include "UI/HUD/AuraHUD.h"
 #include "UI/Widget/AuraUserWidget.h"
+#include "UI/WidgetController/AttributeMenuWidgetController.h"
 #include "UI/WidgetController/OverlayWidgetController.h"
 
 UOverlayWidgetController* AAuraHUD::GetOverlayWidgetController(const FWidgetControllerParams& WCParams)
@@ -21,6 +22,24 @@ UOverlayWidgetController* AAuraHUD::GetOverlayWidgetController(const FWidgetCont
 	}
 	// 如果已存在控件控制器，则直接返回
 	return OverlayWidgetController;
+}
+
+UAttributeMenuWidgetController* AAuraHUD::GetAttributeMenuWidgetController(const FWidgetControllerParams& WCParams)
+{
+	//如果控件控制器为空，则创建并初始化它
+	if (AttributeMenuWidgetController == nullptr)
+	{
+		// 创建新的控件控制器对象
+		AttributeMenuWidgetController = NewObject<UAttributeMenuWidgetController>(this,AttributeMenuWidgetControllerClass);
+		// 设置控件控制器的参数
+		AttributeMenuWidgetController->SetWidgetControllerParams(WCParams);
+		// 将回调函数绑定到依赖的属性值变化事件
+		// 绑定后，当属性值（如 Health 或 MaxHealth）发生变化时，回调函数会被触发，更新 UI 或执行其他逻辑
+		AttributeMenuWidgetController->BindCallbacksToDependencies();
+		return AttributeMenuWidgetController;
+	}
+	// 如果已存在控件控制器，则直接返回
+	return AttributeMenuWidgetController;
 }
 
 void AAuraHUD::InitOverlay(APlayerController* PC, APlayerState* PS, UAbilitySystemComponent* ASC, UAttributeSet* AS)
