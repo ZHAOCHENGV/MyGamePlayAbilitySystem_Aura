@@ -90,11 +90,20 @@ struct FAuraGameplayEffectContext : public FGameplayEffectContext
 public:
 	bool IsCriticalHit() const { return bIsCriticalHit; }
 	bool IsBlockedHit() const { return bIsBlockedHit; }
+	bool IsSuccessfulDebuff() const { return bIsSuccessfulDebuff; }
+	float GetDebuffDamage() const {return DebuffDamage;}
+	float GetDebuffDuration() const {return DebuffDuration;}
+	float GetDebuffFrequency() const {return DebuffFrequency;}
+	TSharedPtr<FGameplayTag> GetDamageType() const {return DamageType;}
 
-	//设置是否暴击
+
 	void SetIsCriticalHit(bool bInIsCriticalHit) { bIsCriticalHit = bInIsCriticalHit; }
-	//设置是否被格挡
 	void SetIsBlockedHit(bool bInIsBlockedHit){ bIsBlockedHit = bInIsBlockedHit; }
+	void SetIsSuccessfulDebuff(bool bInIsDebuff) {bIsSuccessfulDebuff = bInIsDebuff;}
+	void SetDebuffDamage(float InDamage){DebuffDamage = InDamage;}
+	void SetDebuffDuration(float InDuration){DebuffDuration = InDuration;}
+	void SetDebuffFrequency(float InFrequency){DebuffFrequency = InFrequency;}
+	
 	
 	/** 返回用于序列化的实际结构体，子类必须覆盖 this！ */
 	virtual UScriptStruct* GetScriptStruct() const
@@ -130,12 +139,28 @@ public:
 	}
 
 protected:
-	UPROPERTY()
+	
 	//是否被格挡
+	UPROPERTY()
 	bool bIsBlockedHit = false;
 	//是否暴击
+	UPROPERTY()
 	bool bIsCriticalHit = false;
-	
+
+	//是否有Debuff
+	UPROPERTY()
+	bool bIsSuccessfulDebuff = false;
+	//Debuff伤害
+	UPROPERTY()
+	float DebuffDamage = 0.f;
+	//Debuff持续时间
+	UPROPERTY()
+	float DebuffDuration = 0.f;
+	//Debuff频率
+	UPROPERTY()
+	float DebuffFrequency = 0.f;
+	//伤害类型
+	TSharedPtr<FGameplayTag> DamageType;
 };
 	/*
 	 * TStructOpsTypeTraits :  模板结构用于告诉引擎如何处理一个结构体（或类）的特殊操作。这些特殊操作包括网络序列化、复制、比较等

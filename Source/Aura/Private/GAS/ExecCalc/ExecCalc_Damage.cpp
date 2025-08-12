@@ -11,46 +11,75 @@
 #include "Interation/CombatInterface.h"
 
 
+/**
+ * @brief 伤害执行用的“属性捕获定义集合”（Execution：在计算伤害时从源/目标读取所需属性）
+ *
+ * 功能说明：
+ * - DECLARE_ATTRIBUTE_CAPTUREDEF(Name)：声明一个捕获定义句柄（如 ArmorDef），供执行期按定义读取属性值；
+ * - DEFINE_ATTRIBUTE_CAPTUREDEF(AttrSet, Name, From, bSnapshot)：
+ *   指定属性所在的 AttributeSet、属性名、捕获来源（Source/Target）以及是否快照（bSnapshot）。
+ *
+ * 术语速记：
+ * - Source/Target：来源/目标 ASC（施法者/受击者）；bSnapshot=true 表示在GE创建时快照，false表示在执行时实时读取。
+ */
 struct AuraDamageStatics
 {
-	// 声明一个捕获属性定义
+	// 声明“护甲”捕获定义
 	DECLARE_ATTRIBUTE_CAPTUREDEF(Armor);
+	// 声明“护甲穿透”捕获定义（注意：项目中命名为 ArmorPenetrion）
 	DECLARE_ATTRIBUTE_CAPTUREDEF(ArmorPenetrion);
+	// 声明“格挡几率”捕获定义
 	DECLARE_ATTRIBUTE_CAPTUREDEF(BlockChance);
+	// 声明“暴击率”捕获定义
 	DECLARE_ATTRIBUTE_CAPTUREDEF(CriticalHitChance);
+	// 声明“暴击伤害”捕获定义
 	DECLARE_ATTRIBUTE_CAPTUREDEF(CriticalHitDamage);
+	// 声明“暴击抗性”捕获定义
 	DECLARE_ATTRIBUTE_CAPTUREDEF(CriticalHitResistance);
+	// 声明“火焰抗性”捕获定义
 	DECLARE_ATTRIBUTE_CAPTUREDEF(FireResistance);
+	// 声明“闪电抗性”捕获定义
 	DECLARE_ATTRIBUTE_CAPTUREDEF(LightningResistance);
+	// 声明“奥术抗性”捕获定义
 	DECLARE_ATTRIBUTE_CAPTUREDEF(ArcaneResistance);
+	// 声明“物理抗性”捕获定义
 	DECLARE_ATTRIBUTE_CAPTUREDEF(PhysicalResistance);
-	
 
-	
-	// 构造函数
+	// 构造时完成具体捕获规则的定义（指定属性集/来源端/是否快照）
 	AuraDamageStatics()
 	{
-		// 定义捕获属性
-		// 参数说明：
-		// - `UAuraAttributeSet`：属性所在的 AttributeSet 类。
-		// - `Armor`：捕获的属性名称。
-		// - `Target`：从目标对象捕获属性。
-		// - `false`：是否使用 快照模式，`false` 表示实时计算。
+		// 目标端读取“护甲”，执行时读取（非快照）
 		DEFINE_ATTRIBUTE_CAPTUREDEF(UAuraAttributeSet, Armor, Target, false);
+
+		// 目标端读取“格挡几率”，执行时读取（非快照）
 		DEFINE_ATTRIBUTE_CAPTUREDEF(UAuraAttributeSet, BlockChance, Target, false);
+
+		// 来源端读取“护甲穿透”，执行时读取（非快照）
 		DEFINE_ATTRIBUTE_CAPTUREDEF(UAuraAttributeSet, ArmorPenetrion, Source, false);
+
+		// 来源端读取“暴击率”，执行时读取（非快照）
 		DEFINE_ATTRIBUTE_CAPTUREDEF(UAuraAttributeSet, CriticalHitChance, Source, false);
+
+		// 来源端读取“暴击伤害”，执行时读取（非快照）
 		DEFINE_ATTRIBUTE_CAPTUREDEF(UAuraAttributeSet, CriticalHitDamage, Source, false);
+
+		// 目标端读取“暴击抗性”，执行时读取（非快照）
 		DEFINE_ATTRIBUTE_CAPTUREDEF(UAuraAttributeSet, CriticalHitResistance, Target, false);
+
+		// 目标端读取“火焰抗性”，执行时读取（非快照）
 		DEFINE_ATTRIBUTE_CAPTUREDEF(UAuraAttributeSet, FireResistance, Target, false);
+
+		// 目标端读取“闪电抗性”，执行时读取（非快照）
 		DEFINE_ATTRIBUTE_CAPTUREDEF(UAuraAttributeSet, LightningResistance, Target, false);
+
+		// 目标端读取“奥术抗性”，执行时读取（非快照）
 		DEFINE_ATTRIBUTE_CAPTUREDEF(UAuraAttributeSet, ArcaneResistance, Target, false);
+
+		// 目标端读取“物理抗性”，执行时读取（非快照）
 		DEFINE_ATTRIBUTE_CAPTUREDEF(UAuraAttributeSet, PhysicalResistance, Target, false);
-		
-		
-		
 	}
 };
+
 
 static const AuraDamageStatics& DamageStatics()
 {
@@ -74,9 +103,7 @@ UExecCalc_Damage::UExecCalc_Damage()
 	RelevantAttributesToCapture.Add(DamageStatics().LightningResistanceDef);
 	RelevantAttributesToCapture.Add(DamageStatics().ArcaneResistanceDef);
 	RelevantAttributesToCapture.Add(DamageStatics().PhysicalResistanceDef);
-
 	
-
 }
 
 

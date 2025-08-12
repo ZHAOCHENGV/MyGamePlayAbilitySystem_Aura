@@ -104,8 +104,7 @@ USpellMenuWidgetController* UAuraAbilitySystemLibrary::GetSpellMenuWidgetControl
 }
 
 
-void UAuraAbilitySystemLibrary::InitializeDefaultAttribute(const UObject* WorldContextObject,
-                                                           ECharacterClass CharacterClass, float Level, UAbilitySystemComponent* ASC)
+void UAuraAbilitySystemLibrary::InitializeDefaultAttribute(const UObject* WorldContextObject,ECharacterClass CharacterClass, float Level, UAbilitySystemComponent* ASC)
 {
 	// 获取与 Ability System Component（ASC）相关联的 AvatarActor
 	AActor * AvatarActor = ASC->GetAvatarActor();
@@ -201,6 +200,119 @@ bool UAuraAbilitySystemLibrary::IsBlockedHit(const FGameplayEffectContextHandle&
 	}
 	// 如果转换失败，则返回 false，表示没有“格挡击中”的状态
 	return false;
+}
+
+/**
+ * @brief 从 EffectContext 读取：Debuff 是否命中成功
+ * @param EffectContextHandle 输入：一次 GE 应用的上下文句柄（内部应为 FAuraGameplayEffectContext）
+ * @param bInIsCriticalHit    预留参数：是否暴击（当前函数未用，仅占位）
+ * @return bool               true=Debuff 判定成功；否则 false
+ *
+ * 背景知识（GAS）：
+ * - GameplayEffectContext：承载一次效果的来源信息（Instigator/EffectCauser/自定义扩展字段等）。
+ * - 我们扩展了 FAuraGameplayEffectContext，新增了 Debuff 相关标记/数值，便于在任意位置读取。
+ *
+ * 详细流程：
+ * 1) 从句柄中取出底层 Context 指针；
+ * 2) 尝试将其转换为 FAuraGameplayEffectContext；
+ * 3) 转换成功则读取标记并返回；失败则返回 false。
+ *
+ * 注意事项：
+ * - 本函数是“只读”访问；未修改 EffectContextHandle。
+ * - 若句柄中不是 FAuraGameplayEffectContext，static_cast 结果为不匹配类型，指针判空后直接兜底返回。
+ */
+bool UAuraAbilitySystemLibrary::IsSuccessfulDebuff(FGameplayEffectContextHandle& EffectContextHandle,bool bInIsCriticalHit)
+{
+	// 步骤 1：从句柄拿到底层 Context 指针
+	if (const FAuraGameplayEffectContext* AuraEffectContext = static_cast<const FAuraGameplayEffectContext*>(EffectContextHandle.Get())) // 取并尝试转换
+	{
+		// 步骤 2：读取我们扩展的标记（Debuff 是否命中）
+		return AuraEffectContext->IsSuccessfulDebuff(); // 直接返回标记
+	}
+	// 步骤 3：兜底（取不到扩展 Context）
+	return false;
+}
+
+
+/**
+ * @brief 从 EffectContext 读取：Debuff 每跳伤害（DoT Tick 伤害）
+ * @param EffectContextHandle 输入：上下文句柄
+ * @param bInIsCriticalHit    预留参数：是否暴击（当前未用）
+ * @return float              每跳伤害；取不到时返回 0.f
+ *
+ * 详细流程：同上（转换→读取→兜底）
+ */
+float UAuraAbilitySystemLibrary::GetDebuffDamage(FGameplayEffectContextHandle& EffectContextHandle,bool bInIsCriticalHit)
+{
+	// 步骤 1：尝试拿到我们扩展的 Context
+	if (const FAuraGameplayEffectContext* AuraEffectContext = static_cast<const FAuraGameplayEffectContext*>(EffectContextHandle.Get())) // 转换成功才读
+	{
+		// 步骤 2：读取 DebuffDamage
+		return AuraEffectContext->GetDebuffDamage(); // 返回数值
+	}
+	// 步骤 3：兜底
+	return 0.f;
+}
+
+/**
+ * @brief 从 EffectContext 读取：Debuff 持续时间（秒）
+ * @param EffectContextHandle 输入：上下文句柄
+ * @param bInIsCriticalHit    预留参数（当前未用）
+ * @return float              Debuff 持续时间；取不到时 0.f
+ */
+float UAuraAbilitySystemLibrary::GetDebuffDuration(FGameplayEffectContextHandle& EffectContextHandle,bool bInIsCriticalHit)
+{
+	// 步骤 1：尝试拿到扩展 Context
+	if (const FAuraGameplayEffectContext* AuraEffectContext = static_cast<const FAuraGameplayEffectContext*>(EffectContextHandle.Get())) // 判空+转换
+	{
+		// 步骤 2：读取持续时间
+		return AuraEffectContext->GetDebuffDuration(); // 秒
+	}
+	// 步骤 3：兜底
+	return 0.f;
+}
+
+/**
+ * @brief 从 EffectContext 读取：Debuff Tick 间隔（秒/次）
+ * @param EffectContextHandle 输入：上下文句柄
+ * @param bInIsCriticalHit    预留参数（当前未用）
+ * @return float              Tick 间隔；取不到时 0.f
+ */
+float UAuraAbilitySystemLibrary::GetDebuffFrequency(FGameplayEffectContextHandle& EffectContextHandle,bool bInIsCriticalHit)
+{
+	// 步骤 1：尝试拿到扩展 Context
+	if (const FAuraGameplayEffectContext* AuraEffectContext = static_cast<const FAuraGameplayEffectContext*>(EffectContextHandle.Get())) // 转换检查
+	{
+		// 步骤 2：读取频率（间隔）
+		return AuraEffectContext->GetDebuffFrequency(); // 秒/次
+	}
+	// 步骤 3：兜底
+	return 0.f;
+}
+
+/**
+ * @brief 从 EffectContext 读取：DamageType（FGameplayTag）
+ * @param EffectContextHandle 输入：上下文句柄
+ * @param bInIsCriticalHit    预留参数（当前未用）
+ * @return FGameplayTag       有效则返回具体 Tag；取不到时返回空 Tag
+ *
+ * 背景：
+ * - 我们把 DamageType 用 TSharedPtr<FGameplayTag> 存在 Context 里，读取时需要先判 IsValid()。
+ */
+FGameplayTag UAuraAbilitySystemLibrary::GetDamageType(FGameplayEffectContextHandle& EffectContextHandle,bool bInIsCriticalHit)
+{
+	// 步骤 1：拿到扩展 Context
+	if (const FAuraGameplayEffectContext* AuraEffectContext = static_cast<const FAuraGameplayEffectContext*>(EffectContextHandle.Get())) // 转换
+	{
+		// 步骤 2：内部 Tag 指针判有效
+		if (AuraEffectContext->GetDamageType().IsValid()) // 需要先判断
+		{
+			// 步骤 3：解引用返回实际的 FGameplayTag
+			return *AuraEffectContext->GetDamageType(); // 解引用得到值
+		}
+	}
+	// 步骤 4：兜底（返回空 Tag）
+	return FGameplayTag();
 }
 
 bool UAuraAbilitySystemLibrary::IsCriticalHit(const FGameplayEffectContextHandle& EffectContextHandle)
