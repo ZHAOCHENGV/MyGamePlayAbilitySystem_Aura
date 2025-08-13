@@ -103,6 +103,7 @@ public:
 	void SetDebuffDamage(float InDamage){DebuffDamage = InDamage;}
 	void SetDebuffDuration(float InDuration){DebuffDuration = InDuration;}
 	void SetDebuffFrequency(float InFrequency){DebuffFrequency = InFrequency;}
+	void SetDamageType(TSharedPtr<FGameplayTag> InDamageType){DamageType = InDamageType;}
 	
 	
 	/** 返回用于序列化的实际结构体，子类必须覆盖 this！ */

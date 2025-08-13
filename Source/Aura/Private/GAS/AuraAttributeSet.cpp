@@ -129,89 +129,194 @@ void UAuraAttributeSet::PostGameplayEffectExecute(const struct FGameplayEffectMo
 	}
 	if (Data.EvaluatedData.Attribute == GetIncomingDamageAttribute())
 	{
-		// 获取当前受到的伤害值
-		const float LocalIncomingDamage = GetIncomingDamage();
-		// 清空 "IncomingDamage"，表示这次伤害已经被处理
-		SetIncomingDamage(0.f);
-		if (LocalIncomingDamage > 0)
-		{
-			// 计算新的健康值（当前生命值减去伤害值）
-			const float NewHealth = GetHealth() - LocalIncomingDamage;
-			// 更新健康值，并确保健康值限制在 0 到最大健康值之间
-			SetHealth(FMath::Clamp(NewHealth,0,GetMaxHealth()));
-			// 判断伤害是否致命（健康值是否小于等于 0）
-			const bool bFatal = NewHealth <= 0.f;
-			if (bFatal)//死亡
-			{
-				ICombatInterface* CombatInterface = Cast<ICombatInterface>(Props.TargetAvatarActor);
-				if (CombatInterface)
-				{
-					CombatInterface->Die();
-				}
-				
-				SendXPEvent(Props);
-			}
-			else//不死亡
-			{
-				// 创建一个标签容器用于标识 HitReact（受击反应）
-				FGameplayTagContainer TagContainer;
-				TagContainer.AddTag(FAuraGamePlayTags::Get().Effects_HitReact);
-				// 尝试通过指定标签激活目标的能力
-				Props.TargetASC->TryActivateAbilitiesByTag(TagContainer);
-			}
-
-			const bool bBlock = UAuraAbilitySystemLibrary::IsBlockedHit(Props.EffectContextHandle);
-			const bool bCriticalHit = UAuraAbilitySystemLibrary::IsCriticalHit(Props.EffectContextHandle);
-			ShowFloatingText(Props, LocalIncomingDamage, bBlock, bCriticalHit);
-		}
+		HandleIncomingDamage(Props);
 	}
 	// 当检测到经验值获取属性变化时的处理逻辑
 	if (Data.EvaluatedData.Attribute == GetIncomingXPAttribute())
 	{
-		// 获取当前累积的待处理经验值（临时存储值）
-		const float LocalIncomingXP = GetIncomingXP();
-		// 立即清零经验获取属性（重要！防止重复处理）
-		SetIncomingXP(0.f);
-		// 输出日志
-		UE_LOG(LogAura,Log,TEXT(" Incoming XP : %f"),LocalIncomingXP );
+		HandleIncomingXP(Props);
+	}
+}
 
-		
-		// 处理经验获取和升级逻辑的核心函数
-		if (Props.SourceCharacter->Implements<UPlayerInterface>() && Props.SourceCharacter->Implements<UCombatInterface>())
+
+void UAuraAttributeSet::HandleIncomingDamage(const FEffectProperties& Props)
+{
+	// 获取当前受到的伤害值
+	const float LocalIncomingDamage = GetIncomingDamage();
+	// 清空 "IncomingDamage"，表示这次伤害已经被处理
+	SetIncomingDamage(0.f);
+	if (LocalIncomingDamage > 0)
+	{
+		// 计算新的健康值（当前生命值减去伤害值）
+		const float NewHealth = GetHealth() - LocalIncomingDamage;
+		// 更新健康值，并确保健康值限制在 0 到最大健康值之间
+		SetHealth(FMath::Clamp(NewHealth,0,GetMaxHealth()));
+		// 判断伤害是否致命（健康值是否小于等于 0）
+		const bool bFatal = NewHealth <= 0.f;
+		if (bFatal)//死亡
 		{
-			// 通过战斗接口获取当前角色等级
-			const int32 CurrentLevel = ICombatInterface::Execute_GetPlayerLevel(Props.SourceCharacter);
-			// 通过玩家接口获取当前经验值
-			const int32 CurrentXP = IPlayerInterface::Execute_GetXP(Props.SourceCharacter);
-			// 计算增加经验后的新等级
-			const int32 NewLevel = IPlayerInterface::Execute_FindLevelForXP(Props.SourceCharacter, CurrentXP + LocalIncomingXP);
-			// 计算升级次数
-			const int32 NumLevelUps = NewLevel - CurrentLevel;
-			//如果升级次数大于0，则执行升级逻辑
-			if (NumLevelUps > 0)
+			ICombatInterface* CombatInterface = Cast<ICombatInterface>(Props.TargetAvatarActor);
+			if (CombatInterface)
 			{
-				const int32 AttributePointsReward = IPlayerInterface::Execute_GetAttributePointsReward(Props.SourceCharacter, CurrentLevel);
-				const int32 SpellPointsReward = IPlayerInterface::Execute_GetSpellPointsReward(Props.SourceCharacter, CurrentLevel);
-
-				IPlayerInterface::Execute_AddToPlayerLevel(Props.SourceCharacter,NumLevelUps);
-				IPlayerInterface::Execute_AddToAttributePoints(Props.SourceCharacter,AttributePointsReward);
-				IPlayerInterface::Execute_AddToSpellPoints(Props.SourceCharacter,SpellPointsReward);
-
-				//设置到达最大生命值和最大魔力值
-				bTopOffHealth = true;
-				bTopOffMana = true;
-				
-				
-				
-
-				// 执行升级操作（应循环处理多次升级）
-				IPlayerInterface::Execute_LeveUp(Props.SourceCharacter);
+				CombatInterface->Die();
 			}
-			// 添加经验值（需确保在服务端执行）
-			IPlayerInterface::Execute_AddToXP(Props.SourceCharacter, LocalIncomingXP);
+				
+			SendXPEvent(Props);
 		}
+		else//不死亡
+		{
+			// 创建一个标签容器用于标识 HitReact（受击反应）
+			FGameplayTagContainer TagContainer;
+			TagContainer.AddTag(FAuraGamePlayTags::Get().Effects_HitReact);
+			// 尝试通过指定标签激活目标的能力
+			Props.TargetASC->TryActivateAbilitiesByTag(TagContainer);
+		}
+
+		const bool bBlock = UAuraAbilitySystemLibrary::IsBlockedHit(Props.EffectContextHandle);
+		const bool bCriticalHit = UAuraAbilitySystemLibrary::IsCriticalHit(Props.EffectContextHandle);
+		ShowFloatingText(Props, LocalIncomingDamage, bBlock, bCriticalHit);
+		if (UAuraAbilitySystemLibrary::IsSuccessfulDebuff(Props.EffectContextHandle))
+		{
+			Debuff(Props);
+		}
+	}
+}
+
+void UAuraAttributeSet::HandleIncomingXP(const FEffectProperties& Props)
+{
+	// 获取当前累积的待处理经验值（临时存储值）
+	const float LocalIncomingXP = GetIncomingXP();
+	// 立即清零经验获取属性（重要！防止重复处理）
+	SetIncomingXP(0.f);
+	// 输出日志
+	UE_LOG(LogAura,Log,TEXT(" Incoming XP : %f"),LocalIncomingXP );
+
 		
-		
+	// 处理经验获取和升级逻辑的核心函数
+	if (Props.SourceCharacter->Implements<UPlayerInterface>() && Props.SourceCharacter->Implements<UCombatInterface>())
+	{
+		// 通过战斗接口获取当前角色等级
+		const int32 CurrentLevel = ICombatInterface::Execute_GetPlayerLevel(Props.SourceCharacter);
+		// 通过玩家接口获取当前经验值
+		const int32 CurrentXP = IPlayerInterface::Execute_GetXP(Props.SourceCharacter);
+		// 计算增加经验后的新等级
+		const int32 NewLevel = IPlayerInterface::Execute_FindLevelForXP(Props.SourceCharacter, CurrentXP + LocalIncomingXP);
+		// 计算升级次数
+		const int32 NumLevelUps = NewLevel - CurrentLevel;
+		//如果升级次数大于0，则执行升级逻辑
+		if (NumLevelUps > 0)
+		{
+			const int32 AttributePointsReward = IPlayerInterface::Execute_GetAttributePointsReward(Props.SourceCharacter, CurrentLevel);
+			const int32 SpellPointsReward = IPlayerInterface::Execute_GetSpellPointsReward(Props.SourceCharacter, CurrentLevel);
+
+			IPlayerInterface::Execute_AddToPlayerLevel(Props.SourceCharacter,NumLevelUps);
+			IPlayerInterface::Execute_AddToAttributePoints(Props.SourceCharacter,AttributePointsReward);
+			IPlayerInterface::Execute_AddToSpellPoints(Props.SourceCharacter,SpellPointsReward);
+
+			//设置到达最大生命值和最大魔力值
+			bTopOffHealth = true;
+			bTopOffMana = true;
+				
+				
+				
+
+			// 执行升级操作（应循环处理多次升级）
+			IPlayerInterface::Execute_LeveUp(Props.SourceCharacter);
+		}
+		// 添加经验值（需确保在服务端执行）
+		IPlayerInterface::Execute_AddToXP(Props.SourceCharacter, LocalIncomingXP);
+	}
+}
+
+/**
+ * @brief 根据 EffectContext 中的 Debuff 参数，临时构造一个“周期伤害（DoT）”类 UGameplayEffect 并施加到目标
+ * @param Props 作用参数集合：包含 SourceASC/TargetASC、SourceAvatarActor、EffectContextHandle 等
+ * @return void  无返回；副作用是对 TargetASC 施加一个按频率跳伤的临时 GE
+ *
+ * 功能说明：
+ * - 从 Props.EffectContextHandle 读取 Debuff 相关参数（DamageType、DebuffDamage、DebuffDuration、DebuffFrequency）。
+ * - 运行时用 NewObject 动态创建一个 UGameplayEffect，配置“有持续时间 + 周期触发”，并添加对 IncomingDamage 的修饰器。
+ * - 构建 FGameplayEffectSpec，补写 DamageType 到自定义 Context，随后对 TargetASC 执行 ApplyGameplayEffectSpecToSelf。
+ *
+ * 背景知识（UE/GAS）：
+ * - UGameplayEffect 是“配方”，FGameplayEffectSpec 是“实例单”；Period>0 表示按固定间隔重复生效（DoT）。
+ * - EffectContext 记录施加者/来源对象/命中等信息；我们扩展的 Context 还带有 DamageType 等自定义字段。
+ * - Attribute 修饰器（Modifiers）描述对某个 Attribute 的变更：加法/乘法/覆盖等。
+ *
+ * 详细流程：
+ * 1) 取标签单例与用 SourceASC 构建 EffectContext，并记录 SourceAvatarActor 作为 SourceObject。
+ * 2) 从上游 Props.EffectContextHandle 读出 DamageType、DebuffDamage、DebuffDuration、DebuffFrequency。
+ * 3) New 一个临时 UGameplayEffect：设置 DurationPolicy=HasDuration、Period=DebuffFrequency、Duration=DebuffDuration，
+ *    并贴上对应的 Debuff Tag，设置叠加策略（同来源聚合，最大 1 层）。
+ * 4) 在 GE 上添加一条对 IncomingDamage 的 Additive 修饰器，幅度使用 DebuffDamage（每跳伤害）。
+ * 5) 直接 new 一个 FGameplayEffectSpec（使用上面构造的 Effect 与 EffectContext），把 DamageType 写回 Context，
+ *    然后调用 TargetASC->ApplyGameplayEffectSpecToSelf 应用。
+ *
+ * 注意事项（新手易错）：
+ * - GamePlayTags.DamageTypesDebuffs[DamageType] 使用前应确保映射存在该键；否则可能访问越界（开发期可 ensure）。
+ * - DebuffFrequency 应 > 0，否则 Period=0 将导致周期效果无效或异常；DebuffDuration 应 >= 0。
+ * - 直接 new FGameplayEffectSpec 存在生命周期管理风险；常见做法是使用 FGameplayEffectSpecHandle 或栈对象。
+ * - NewObject(GetTransientPackage(), ...) 返回瞬时对象；仅本次使用，避免长期持有导致 GC 相关问题。
+ */
+void UAuraAttributeSet::Debuff(const FEffectProperties& Props)
+{
+	// 步骤 1：拿到项目统一的 GameplayTags（包含各种伤害/减益的 Tag 映射）
+	const FAuraGamePlayTags& GamePlayTags = FAuraGamePlayTags::Get();
+	// 步骤 2：用 SourceASC 创建一个 EffectContext（描述这次效果的“处方上下文”）
+	FGameplayEffectContextHandle EffectContext= Props.SourceASC->MakeEffectContext();
+	// 步骤 3：把 SourceAvatarActor 记入 Context 的 SourceObject（便于溯源、Cue 展示）
+	EffectContext.AddSourceObject(Props.SourceAvatarActor);
+
+	// 步骤 4：从上游的 EffectContextHandle 读取伤害类型（FGameplayTag）
+	const FGameplayTag DamageType = UAuraAbilitySystemLibrary::GetDamageType(Props.EffectContextHandle);
+	// 步骤 5：读取每跳伤害（float）
+	const float DebuffDamage = UAuraAbilitySystemLibrary::GetDebuffDamage(Props.EffectContextHandle);
+	// 步骤 6：读取总持续时间（秒）
+	const float DebuffDuration = UAuraAbilitySystemLibrary::GetDebuffDuration(Props.EffectContextHandle);
+	// 步骤 7：读取跳伤频率（间隔秒数，Period）
+	const float DebuffFrequency = UAuraAbilitySystemLibrary::GetDebuffFrequency(Props.EffectContextHandle);
+
+	// 步骤 8：拼一个易读的临时 GE 名称（带上伤害类型，方便日志/调试）
+	FString DebuffName = FString::Printf(TEXT("DynamicDebuff_%s"),*DamageType.ToString());
+	// 步骤 9：在瞬时包中动态创建一个 UGameplayEffect（仅用于本次应用）
+	UGameplayEffect* Effect = NewObject<UGameplayEffect>(GetTransientPackage(), FName(DebuffName));
+
+	// 步骤 10：设置“有持续时间”的策略（HasDuration）
+	Effect->DurationPolicy = EGameplayEffectDurationType::HasDuration;
+	// 步骤 11：设置周期触发间隔（秒）；Period>0 才会按间隔触发
+	Effect->Period = DebuffFrequency;
+	// 步骤 12：设置持续时间（可伸缩浮点封装）
+	Effect->DurationMagnitude = FScalableFloat(DebuffDuration);
+	// 步骤 13：给 GE 添加“本次减益类型”的 Tag（用于过滤/查询/表现）
+	Effect->InheritableOwnedTagsContainer.AddTag(GamePlayTags.DamageTypesDebuffs[DamageType]);
+	// 步骤 14：设置叠加策略：同一来源聚合
+	Effect->StackingType = EGameplayEffectStackingType::AggregateBySource;
+	// 步骤 15：限制最大叠加层数为 1（防止多层无限叠加）
+	Effect->StackLimitCount = 1;
+
+	// 步骤 16：准备在 GE 上新增一个修饰器（Modifier），影响 IncomingDamage
+	const int32 Index = Effect->Modifiers.Num();                           // 记录当前尾索引
+	Effect->Modifiers.Add(FGameplayModifierInfo());                        // 在尾部追加一个默认修饰器
+	FGameplayModifierInfo& ModifierInfo = Effect->Modifiers[Index];        // 引用该新修饰器
+	
+	// 步骤 17：把每跳伤害 DebuffDamage 作为修饰器的幅度（可被曲线/等级缩放）
+	ModifierInfo.ModifierMagnitude = FScalableFloat(DebuffDamage);
+	// 步骤 18：修改方式为“加法叠加”（EGameplayModOp::Additive）
+	ModifierInfo.ModifierOp = EGameplayModOp::Additive;
+	// 步骤 19：目标属性为 IncomingDamage（通常用于汇总即将结算的伤害）
+	ModifierInfo.Attribute = UAuraAttributeSet::GetIncomingDamageAttribute();
+
+	// 步骤 20：构造一个 FGameplayEffectSpec（实例单），并把 DamageType 回写到自定义 Context
+	if (FGameplayEffectSpec* MutableSpec = new FGameplayEffectSpec(Effect, EffectContext, 1.f)) // 直接 new 一个 Spec（等级 1.f）
+	{
+		// 步骤 21：从 Spec 获取我们扩展的 FAuraGameplayEffectContext 指针（用于写入自定义字段）
+		FAuraGameplayEffectContext* AuraContext = static_cast<FAuraGameplayEffectContext*>(MutableSpec->GetContext().Get());
+		// 步骤 22：为 DamageType 构造一个共享指针（与 Context 的字段类型匹配）
+		TSharedPtr<FGameplayTag> DebuffDamageType = MakeShareable(new FGameplayTag(DamageType));
+		// 步骤 23：把 DamageType 写回 Context（保证下游读取一致）
+		AuraContext->SetDamageType(DebuffDamageType);
+		// 步骤 24：对 TargetASC 施加这个临时构造的 Spec（开始按周期造成伤害）
+		Props.TargetASC->ApplyGameplayEffectSpecToSelf(*MutableSpec);
 	}
 }
 
@@ -299,6 +404,8 @@ void UAuraAttributeSet::SendXPEvent(const FEffectProperties& Props)
 		UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(Props.SourceCharacter,GamePlayTags.Attributes_Meta_IncomingXP,Payload);
 	}
 }
+
+
 
 void UAuraAttributeSet::OnRep_Armor(const FGameplayAttributeData& OldArmor) const
 {

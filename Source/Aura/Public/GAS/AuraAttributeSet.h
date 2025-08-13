@@ -323,6 +323,15 @@ private:
 	//发送经验值事件
 	void SendXPEvent(const FEffectProperties& Props);
 
+	//处理传入的伤害值
+	void HandleIncomingDamage(const FEffectProperties& Props);
+	
+	//处理传入的 XP
+	void HandleIncomingXP(const FEffectProperties& Props);
+	
+	//减益效果
+	void Debuff(const FEffectProperties& Props);
+	
 	//到达最大生命值
 	bool bTopOffHealth = false;
 	//到达最大魔法值

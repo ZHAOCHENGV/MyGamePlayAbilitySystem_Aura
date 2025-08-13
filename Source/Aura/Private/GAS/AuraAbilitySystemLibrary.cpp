@@ -205,7 +205,6 @@ bool UAuraAbilitySystemLibrary::IsBlockedHit(const FGameplayEffectContextHandle&
 /**
  * @brief 从 EffectContext 读取：Debuff 是否命中成功
  * @param EffectContextHandle 输入：一次 GE 应用的上下文句柄（内部应为 FAuraGameplayEffectContext）
- * @param bInIsCriticalHit    预留参数：是否暴击（当前函数未用，仅占位）
  * @return bool               true=Debuff 判定成功；否则 false
  *
  * 背景知识（GAS）：
@@ -221,7 +220,7 @@ bool UAuraAbilitySystemLibrary::IsBlockedHit(const FGameplayEffectContextHandle&
  * - 本函数是“只读”访问；未修改 EffectContextHandle。
  * - 若句柄中不是 FAuraGameplayEffectContext，static_cast 结果为不匹配类型，指针判空后直接兜底返回。
  */
-bool UAuraAbilitySystemLibrary::IsSuccessfulDebuff(FGameplayEffectContextHandle& EffectContextHandle,bool bInIsCriticalHit)
+bool UAuraAbilitySystemLibrary::IsSuccessfulDebuff(const FGameplayEffectContextHandle& EffectContextHandle)
 {
 	// 步骤 1：从句柄拿到底层 Context 指针
 	if (const FAuraGameplayEffectContext* AuraEffectContext = static_cast<const FAuraGameplayEffectContext*>(EffectContextHandle.Get())) // 取并尝试转换
@@ -237,12 +236,11 @@ bool UAuraAbilitySystemLibrary::IsSuccessfulDebuff(FGameplayEffectContextHandle&
 /**
  * @brief 从 EffectContext 读取：Debuff 每跳伤害（DoT Tick 伤害）
  * @param EffectContextHandle 输入：上下文句柄
- * @param bInIsCriticalHit    预留参数：是否暴击（当前未用）
  * @return float              每跳伤害；取不到时返回 0.f
  *
  * 详细流程：同上（转换→读取→兜底）
  */
-float UAuraAbilitySystemLibrary::GetDebuffDamage(FGameplayEffectContextHandle& EffectContextHandle,bool bInIsCriticalHit)
+float UAuraAbilitySystemLibrary::GetDebuffDamage(const FGameplayEffectContextHandle& EffectContextHandle)
 {
 	// 步骤 1：尝试拿到我们扩展的 Context
 	if (const FAuraGameplayEffectContext* AuraEffectContext = static_cast<const FAuraGameplayEffectContext*>(EffectContextHandle.Get())) // 转换成功才读
@@ -257,10 +255,9 @@ float UAuraAbilitySystemLibrary::GetDebuffDamage(FGameplayEffectContextHandle& E
 /**
  * @brief 从 EffectContext 读取：Debuff 持续时间（秒）
  * @param EffectContextHandle 输入：上下文句柄
- * @param bInIsCriticalHit    预留参数（当前未用）
  * @return float              Debuff 持续时间；取不到时 0.f
  */
-float UAuraAbilitySystemLibrary::GetDebuffDuration(FGameplayEffectContextHandle& EffectContextHandle,bool bInIsCriticalHit)
+float UAuraAbilitySystemLibrary::GetDebuffDuration(const FGameplayEffectContextHandle& EffectContextHandle)
 {
 	// 步骤 1：尝试拿到扩展 Context
 	if (const FAuraGameplayEffectContext* AuraEffectContext = static_cast<const FAuraGameplayEffectContext*>(EffectContextHandle.Get())) // 判空+转换
@@ -275,10 +272,9 @@ float UAuraAbilitySystemLibrary::GetDebuffDuration(FGameplayEffectContextHandle&
 /**
  * @brief 从 EffectContext 读取：Debuff Tick 间隔（秒/次）
  * @param EffectContextHandle 输入：上下文句柄
- * @param bInIsCriticalHit    预留参数（当前未用）
  * @return float              Tick 间隔；取不到时 0.f
  */
-float UAuraAbilitySystemLibrary::GetDebuffFrequency(FGameplayEffectContextHandle& EffectContextHandle,bool bInIsCriticalHit)
+float UAuraAbilitySystemLibrary::GetDebuffFrequency(const FGameplayEffectContextHandle& EffectContextHandle)
 {
 	// 步骤 1：尝试拿到扩展 Context
 	if (const FAuraGameplayEffectContext* AuraEffectContext = static_cast<const FAuraGameplayEffectContext*>(EffectContextHandle.Get())) // 转换检查
@@ -293,13 +289,12 @@ float UAuraAbilitySystemLibrary::GetDebuffFrequency(FGameplayEffectContextHandle
 /**
  * @brief 从 EffectContext 读取：DamageType（FGameplayTag）
  * @param EffectContextHandle 输入：上下文句柄
- * @param bInIsCriticalHit    预留参数（当前未用）
  * @return FGameplayTag       有效则返回具体 Tag；取不到时返回空 Tag
  *
  * 背景：
  * - 我们把 DamageType 用 TSharedPtr<FGameplayTag> 存在 Context 里，读取时需要先判 IsValid()。
  */
-FGameplayTag UAuraAbilitySystemLibrary::GetDamageType(FGameplayEffectContextHandle& EffectContextHandle,bool bInIsCriticalHit)
+FGameplayTag UAuraAbilitySystemLibrary::GetDamageType(const FGameplayEffectContextHandle& EffectContextHandle)
 {
 	// 步骤 1：拿到扩展 Context
 	if (const FAuraGameplayEffectContext* AuraEffectContext = static_cast<const FAuraGameplayEffectContext*>(EffectContextHandle.Get())) // 转换
@@ -345,6 +340,47 @@ void UAuraAbilitySystemLibrary::SetIsCriticalHit(FGameplayEffectContextHandle& E
 	{
 		// 如果转换成功，则调用 SetIsCriticalHit() 方法设置暴击状态
 		 AuraEffectContext->SetIsCriticalHit(bInIsCriticalHit);
+	}
+}
+
+void UAuraAbilitySystemLibrary::SetIsSuccessfulDebuff(FGameplayEffectContextHandle& EffectContextHandle,bool bInSuccessfulDebuff)
+{
+	if (FAuraGameplayEffectContext* AuraEffectContext = static_cast<FAuraGameplayEffectContext*>(EffectContextHandle.Get()))
+	{
+		AuraEffectContext->SetIsSuccessfulDebuff(bInSuccessfulDebuff);
+	}
+}
+
+void UAuraAbilitySystemLibrary::SetDebuffDamage(FGameplayEffectContextHandle& EffectContextHandle, float InDamage)
+{
+	if (FAuraGameplayEffectContext* AuraEffectContext = static_cast<FAuraGameplayEffectContext*>(EffectContextHandle.Get()))
+	{
+		AuraEffectContext->SetDebuffDamage(InDamage);
+	}
+}
+
+void UAuraAbilitySystemLibrary::SetDebuffDuration(FGameplayEffectContextHandle& EffectContextHandle, float InDuration)
+{
+	if (FAuraGameplayEffectContext* AuraEffectContext = static_cast<FAuraGameplayEffectContext*>(EffectContextHandle.Get()))
+	{
+		AuraEffectContext->SetDebuffDuration(InDuration);
+	}
+}
+
+void UAuraAbilitySystemLibrary::SetDebuffFrequency(FGameplayEffectContextHandle& EffectContextHandle, float InFrequency)
+{
+	if (FAuraGameplayEffectContext* AuraEffectContext = static_cast<FAuraGameplayEffectContext*>(EffectContextHandle.Get()))
+	{
+		AuraEffectContext->SetDebuffFrequency(InFrequency);
+	}
+}
+
+void UAuraAbilitySystemLibrary::SetDamageType(FGameplayEffectContextHandle& EffectContextHandle,const FGameplayTag& InDamageType)
+{
+	if (FAuraGameplayEffectContext* AuraEffectContext = static_cast<FAuraGameplayEffectContext*>(EffectContextHandle.Get()))
+	{
+		const TSharedPtr<FGameplayTag> DamageType = MakeShared<FGameplayTag>(InDamageType);
+		AuraEffectContext->SetDamageType(DamageType);
 	}
 }
 
