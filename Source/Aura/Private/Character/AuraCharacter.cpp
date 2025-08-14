@@ -236,7 +236,7 @@ void AAuraCharacter::InitAbilityActorInfo()
 	//初始化自身的AbilitySystemComponent和AttributeSet
 	AbilitySystemComponent = AuraPlayerState->GetAbilitySystemComponent();
 	AttributeSet = AuraPlayerState->GetAttributeSet();
-	
+	OnAscRegistered.Broadcast(AbilitySystemComponent);
 	//获取控制器是否有效
 	if (AAuraPlayerController * AuraPlayerController = Cast<AAuraPlayerController>(GetController()))
 	{

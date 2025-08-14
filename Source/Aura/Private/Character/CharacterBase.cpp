@@ -8,6 +8,7 @@
 #include "Abilities/GameplayAbility.h"
 #include "Aura/Aura.h"
 #include "Components/CapsuleComponent.h"
+#include "Debuff/DebuffNiagaraComponent.h"
 #include "GAS/AuraAbilitySystemComponent.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -15,9 +16,15 @@
 ACharacterBase::ACharacterBase()
 {
  	PrimaryActorTick.bCanEverTick = false;
+
+	BurnDebuffComponent = CreateDefaultSubobject<UDebuffNiagaraComponent>(TEXT("BurnDebuffComponent"));
+	BurnDebuffComponent->SetupAttachment(GetRootComponent());
+	BurnDebuffComponent->DebuffTag = FAuraGamePlayTags::Get().Debuff_Burn;
+	
 	Weapon = CreateDefaultSubobject<USkeletalMeshComponent>("Weapon");
 	Weapon->SetupAttachment(GetMesh(),("WeaponHandSocket"));
 	Weapon->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	
 	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Camera,ECR_Ignore);
 	GetMesh()->SetCollisionResponseToChannel(ECC_Camera,ECR_Ignore);
 	GetMesh()->SetCollisionResponseToChannel(ECC_Projectile,ECR_Overlap);
@@ -87,6 +94,16 @@ ECharacterClass ACharacterBase::GetCharacterClass_Implementation()
 	return CharacterClass;
 }
 
+FOnASCRegistered ACharacterBase::GetOnASCRegisteredDelegate()
+{
+	return OnAscRegistered;
+}
+
+FOnDeath ACharacterBase::GetOnDeathDelegate()
+{
+	return OnDeath;
+}
+
 
 void ACharacterBase::MulticastHandleDeath_Implementation ()
 {
@@ -112,6 +129,8 @@ void ACharacterBase::MulticastHandleDeath_Implementation ()
 	Dissolve();
 	//设置死亡变量为True
 	bDead = true;
+	//调用死亡委托
+	OnDeath.Broadcast(this);
 	
 }
 

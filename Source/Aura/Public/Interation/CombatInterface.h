@@ -9,7 +9,11 @@
 #include "CombatInterface.generated.h"
 
 
+class UAbilitySystemComponent;
 class UNiagaraSystem;
+
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnASCRegistered, UAbilitySystemComponent*);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDeath, AActor*, DeadActor);
 
 USTRUCT(BlueprintType)
 struct FTaggedMontage
@@ -96,5 +100,10 @@ public:
 	//获取角色类
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	ECharacterClass GetCharacterClass();
+
+	//ASC组件注册时的委托
+	virtual FOnASCRegistered GetOnASCRegisteredDelegate() = 0 ;
 	
+	//死亡委托
+	virtual FOnDeath GetOnDeathDelegate() = 0;
 };

@@ -133,7 +133,7 @@ void UExecCalc_Damage::DetermineDebuff(const FGameplayEffectCustomExecutionParam
 	const FAuraGamePlayTags& GamePlayTags = FAuraGamePlayTags::Get();
 
 	// 遍历“伤害类型 -> Debuff类型”的映射，逐一判定是否触发 Debuff
-	for (TTuple<FGameplayTag, FGameplayTag> Pair : GamePlayTags.DamageTypesDebuffs)
+	for (TTuple<FGameplayTag, FGameplayTag> Pair : GamePlayTags.DamageTypesToDebuffs)
 	{
 		// 当前伤害类型与其对应的 Debuff 类型
 		const FGameplayTag& DamageType = Pair.Key;

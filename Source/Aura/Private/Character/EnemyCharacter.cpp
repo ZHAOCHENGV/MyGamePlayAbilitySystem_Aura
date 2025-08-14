@@ -188,7 +188,7 @@ void AEnemyCharacter::InitAbilityActorInfo()
 		//应用游戏效果，来初始化默认属性
         InitializeDefaultAttributes();
 	}
-	
+	OnAscRegistered.Broadcast(AbilitySystemComponent);
 }
 
 void AEnemyCharacter::InitializeDefaultAttributes() const

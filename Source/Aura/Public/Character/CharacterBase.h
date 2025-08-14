@@ -10,6 +10,7 @@
 #include "CharacterBase.generated.h"
 
 
+class UDebuffNiagaraComponent;
 class UNiagaraSystem;
 class UGameplayAbility;
 class UGameplayEffect;
@@ -67,8 +68,18 @@ public:
 
 	//重载获取角色类函数
 	virtual ECharacterClass GetCharacterClass_Implementation() override;
+
+	// ASC 注册委托
+	virtual FOnASCRegistered GetOnASCRegisteredDelegate() override;
+
+	// 死亡 注册委托
+	virtual FOnDeath GetOnDeathDelegate() override;
 	
 	/*Combatinterface接口结束*/
+
+	//当ASC注册时
+	FOnASCRegistered OnAscRegistered;
+	FOnDeath OnDeath;
 
 	//攻击蒙太奇数组
 	UPROPERTY(EditAnywhere, Category="Combat")
@@ -167,6 +178,10 @@ protected:
 	//职业
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Character Class Defaults")
 	ECharacterClass CharacterClass = ECharacterClass::Warrior;
+
+	//燃烧减益组件
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<UDebuffNiagaraComponent> BurnDebuffComponent;
 	
 private:
 	//启动技能数组

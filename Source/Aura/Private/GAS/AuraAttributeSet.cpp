@@ -14,6 +14,7 @@
 #include "Interation/PlayerInterface.h"
 #include "Net/UnrealNetwork.h"
 #include "Player/AuraPlayerController.h"
+#include "GameplayEffectComponents/TargetTagsGameplayEffectComponent.h"
 
 UAuraAttributeSet::UAuraAttributeSet()
 {
@@ -115,9 +116,9 @@ void UAuraAttributeSet::PostGameplayEffectExecute(const struct FGameplayEffectMo
 	FEffectProperties Props;
 	//设置效果属性
 	SetEffectProperties(Data,Props);
-	// 数值应用时，限制 "Health" 属性的实际值在 0 和最大健康值之间
-	// 此处直接对 SetHealth 和 SetMana 的结果进行限制，确保最终的属性值在有效范围内。
-	// 这里是在实际应用效果后强制修正属性值，能确保逻辑一致性。
+
+	if (Props.TargetCharacter->Implements<UCombatInterface>() && ICombatInterface::Execute_IsDead(Props.TargetCharacter))return;
+	
 	if (Data.EvaluatedData.Attribute == GetHealthAttribute())
 	{
 		SetHealth(FMath::Clamp(GetHealth(),0,GetMaxHealth()));
@@ -253,7 +254,7 @@ void UAuraAttributeSet::HandleIncomingXP(const FEffectProperties& Props)
  *    然后调用 TargetASC->ApplyGameplayEffectSpecToSelf 应用。
  *
  * 注意事项（新手易错）：
- * - GamePlayTags.DamageTypesDebuffs[DamageType] 使用前应确保映射存在该键；否则可能访问越界（开发期可 ensure）。
+ * - GamePlayTags.DamageTypesToDebuffs[DamageType] 使用前应确保映射存在该键；否则可能访问越界（开发期可 ensure）。
  * - DebuffFrequency 应 > 0，否则 Period=0 将导致周期效果无效或异常；DebuffDuration 应 >= 0。
  * - 直接 new FGameplayEffectSpec 存在生命周期管理风险；常见做法是使用 FGameplayEffectSpecHandle 或栈对象。
  * - NewObject(GetTransientPackage(), ...) 返回瞬时对象；仅本次使用，避免长期持有导致 GC 相关问题。
@@ -287,8 +288,14 @@ void UAuraAttributeSet::Debuff(const FEffectProperties& Props)
 	Effect->Period = DebuffFrequency;
 	// 步骤 12：设置持续时间（可伸缩浮点封装）
 	Effect->DurationMagnitude = FScalableFloat(DebuffDuration);
-	// 步骤 13：给 GE 添加“本次减益类型”的 Tag（用于过滤/查询/表现）
-	Effect->InheritableOwnedTagsContainer.AddTag(GamePlayTags.DamageTypesDebuffs[DamageType]);
+	//修复：应用效果时就跳伤害（多跳伤害）
+	Effect->bExecutePeriodicEffectOnApplication = false;  
+	//构造容器并通过 UTargetTagsGameplayEffectComponent 给目标贴 Debuff Tag
+	FInheritedTagContainer TagContainer = FInheritedTagContainer();
+	
+	UTargetTagsGameplayEffectComponent& Component = Effect->FindOrAddComponent<UTargetTagsGameplayEffectComponent>();
+	TagContainer.Added.AddTag(GamePlayTags.DamageTypesToDebuffs[DamageType]);// 将映射到的 Debuff Tag 加入
+	Component.SetAndApplyTargetTagChanges(TagContainer);// 应用目标标签变化
 	// 步骤 14：设置叠加策略：同一来源聚合
 	Effect->StackingType = EGameplayEffectStackingType::AggregateBySource;
 	// 步骤 15：限制最大叠加层数为 1（防止多层无限叠加）

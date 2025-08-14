@@ -160,10 +160,10 @@ void FAuraGamePlayTags::InitializeNativeGameplayTags()
 	GamePlayTags.DamageTypesToResistance.Add(GamePlayTags.Damage_Physical, GamePlayTags.Attributes_Resistance_Physical);
 	GamePlayTags.DamageTypesToResistance.Add(GamePlayTags.Damage_Fire, GamePlayTags.Attributes_Resistance_Fire);
 
-	GamePlayTags.DamageTypesDebuffs.Add(GamePlayTags.Damage_Arcane, GamePlayTags.Debuff_Arcane);
-	GamePlayTags.DamageTypesDebuffs.Add(GamePlayTags.Damage_Lightning, GamePlayTags.Debuff_Stun);
-	GamePlayTags.DamageTypesDebuffs.Add(GamePlayTags.Damage_Physical, GamePlayTags.Debuff_Physical);
-	GamePlayTags.DamageTypesDebuffs.Add(GamePlayTags.Damage_Fire, GamePlayTags.Debuff_Burn);
+	GamePlayTags.DamageTypesToDebuffs.Add(GamePlayTags.Damage_Arcane, GamePlayTags.Debuff_Arcane);
+	GamePlayTags.DamageTypesToDebuffs.Add(GamePlayTags.Damage_Lightning, GamePlayTags.Debuff_Stun);
+	GamePlayTags.DamageTypesToDebuffs.Add(GamePlayTags.Damage_Physical, GamePlayTags.Debuff_Physical);
+	GamePlayTags.DamageTypesToDebuffs.Add(GamePlayTags.Damage_Fire, GamePlayTags.Debuff_Burn);
 
 
 	

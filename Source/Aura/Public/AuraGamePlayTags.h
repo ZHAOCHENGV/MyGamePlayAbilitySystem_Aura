@@ -113,7 +113,7 @@ public:
 	//物理
 	FGameplayTag Debuff_Physical;
 	//伤害类型减益数组
-	TMap<FGameplayTag,FGameplayTag> DamageTypesDebuffs;
+	TMap<FGameplayTag,FGameplayTag> DamageTypesToDebuffs;
 
 	/*
 	 * Debuff主要参数
