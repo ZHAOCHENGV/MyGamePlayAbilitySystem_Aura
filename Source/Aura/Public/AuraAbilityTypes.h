@@ -20,33 +20,33 @@ struct FDamageEffectParams
 	// 世界上下文对象（必需）
 	// 用途：生成视觉效果、播放音效、获取世界信息
 	// 注意：必须有效，否则无法生成视觉特效
-	UPROPERTY()
+	UPROPERTY(BlueprintReadWrite)
 	TObjectPtr<UObject> WorldContextObject = nullptr;
 
 	// 伤害效果类（必需）
 	// 定义伤害如何计算和应用的GameplayEffect
 	// 示例：烧伤、冰冻、中毒等效果
-	UPROPERTY()
+	UPROPERTY(BlueprintReadWrite)
 	TSubclassOf<UGameplayEffect> DamageGameplayEffectClass = nullptr;
 
 	// 来源能力系统组件（必需）
 	// 造成伤害的实体（玩家、敌人等）的能力系统
-	UPROPERTY()
+	UPROPERTY(BlueprintReadWrite)
 	TObjectPtr<UAbilitySystemComponent> SourceAbilitySystemComponent;
 
 	// 目标能力系统组件（必需）
 	// 承受伤害的实体的能力系统
-	UPROPERTY()
+	UPROPERTY(BlueprintReadWrite)
 	TObjectPtr<UAbilitySystemComponent> TargetAbilitySystemComponent;
 
 	// 基础伤害值
 	// 实际伤害可能受属性影响而变动
-	UPROPERTY()
+	UPROPERTY(BlueprintReadWrite)
 	float BaseDamage = 0.f;
 
 	// 技能等级
 	// 用于伤害曲线缩放和效果强度
-	UPROPERTY()
+	UPROPERTY(BlueprintReadWrite)
 	float AbilityLevel = 1.f;
 
 	// 伤害类型标签
@@ -56,23 +56,44 @@ struct FDamageEffectParams
     
 	// 减益触发概率（0.0-1.0）
 	// 示例：0.3表示30%概率施加减益
-	UPROPERTY()
+	UPROPERTY(BlueprintReadWrite)
 	float DebuffChance = 0.f;
 
 	// 减益效果伤害值
 	// 减益状态期间每次触发的伤害
-	UPROPERTY()
+	UPROPERTY(BlueprintReadWrite)
 	float DebuffDamage = 0.f;
 
 	// 减益持续时间（秒）
 	// 减益状态持续的总时长
-	UPROPERTY()
+	UPROPERTY(BlueprintReadWrite)
 	float DebuffDuration = 0.f;
 
 	// 减益触发频率（秒）
 	// 减益效果每次触发的间隔时间
-	UPROPERTY()
+	UPROPERTY(BlueprintReadWrite)
 	float DebuffFrequency = 0.f;
+	
+	//死亡冲量强度
+	UPROPERTY(BlueprintReadWrite)
+	float DeathImpulseMagnitude = 0.f;
+
+	//死亡脉冲位置
+	UPROPERTY(BlueprintReadWrite)
+	FVector DeathImpulse = FVector::ZeroVector;
+
+	//击退强度
+	UPROPERTY(BlueprintReadWrite)
+	float KnockBackForceMagnitude = 0.f;
+
+	//击退几率
+	UPROPERTY(BlueprintReadWrite)
+	float KnockBackChance = 0.f;
+	
+	//击退位置
+	UPROPERTY(BlueprintReadWrite)
+	FVector KnockBackForce = FVector::ZeroVector;
+
 	
 	
 };
@@ -95,7 +116,8 @@ public:
 	float GetDebuffDuration() const {return DebuffDuration;}
 	float GetDebuffFrequency() const {return DebuffFrequency;}
 	TSharedPtr<FGameplayTag> GetDamageType() const {return DamageType;}
-
+	FVector GetDeathImpulse() const {return DeathImpulse;}
+	FVector GetKnockBackForce() const {return KnockBackForce;}
 
 	void SetIsCriticalHit(bool bInIsCriticalHit) { bIsCriticalHit = bInIsCriticalHit; }
 	void SetIsBlockedHit(bool bInIsBlockedHit){ bIsBlockedHit = bInIsBlockedHit; }
@@ -104,6 +126,8 @@ public:
 	void SetDebuffDuration(float InDuration){DebuffDuration = InDuration;}
 	void SetDebuffFrequency(float InFrequency){DebuffFrequency = InFrequency;}
 	void SetDamageType(TSharedPtr<FGameplayTag> InDamageType){DamageType = InDamageType;}
+	void SetDeathImpulse(const FVector& InImpulse){DeathImpulse = InImpulse;}
+	void SetKnockBackForce(const FVector& InForce){KnockBackForce = InForce;}
 	
 	
 	/** 返回用于序列化的实际结构体，子类必须覆盖 this！ */
@@ -162,6 +186,12 @@ protected:
 	float DebuffFrequency = 0.f;
 	//伤害类型
 	TSharedPtr<FGameplayTag> DamageType;
+	//死亡脉冲
+	UPROPERTY()
+	FVector DeathImpulse = FVector::ZeroVector;
+	//击退位置
+	UPROPERTY()
+	FVector KnockBackForce = FVector::ZeroVector;
 };
 	/*
 	 * TStructOpsTypeTraits :  模板结构用于告诉引擎如何处理一个结构体（或类）的特殊操作。这些特殊操作包括网络序列化、复制、比较等

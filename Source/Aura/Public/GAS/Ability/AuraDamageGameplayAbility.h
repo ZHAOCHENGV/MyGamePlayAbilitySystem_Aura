@@ -22,6 +22,7 @@ public:
 	void CauseDamage(AActor* TargetActor);
 
 	//从类默认值创建伤害效果参数
+	UFUNCTION(BlueprintPure)
 	FDamageEffectParams MakeDamageEffectParamsFromClassDefaults(AActor* TargetActor = nullptr) const;
 protected:
 	//伤害游戏效果
@@ -50,6 +51,19 @@ protected:
 	//减益效果持续时间
 	UPROPERTY(EditDefaultsOnly,  Category = "Damage")
 	float DebuffDuration = 5.f;
+
+	//死亡冲量强度
+	UPROPERTY(EditDefaultsOnly,  Category = "Damage")
+	float DeathImpulseMagnitude = 1000.f;
+
+	//击退强度
+	UPROPERTY(EditDefaultsOnly,  Category = "Damage")
+	float KnockBackForceMagnitude = 1000.f;
+
+	//击退几率
+	UPROPERTY(EditDefaultsOnly,  Category = "Damage")
+	float KnockBackChance = 0.f;
+
 	
 	//从数组中随机获取攻击的蒙太奇
 	UFUNCTION(BlueprintPure)

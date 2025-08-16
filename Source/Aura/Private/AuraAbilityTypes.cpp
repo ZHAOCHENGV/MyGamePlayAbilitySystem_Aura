@@ -142,13 +142,18 @@ bool FAuraGameplayEffectContext::NetSerialize(FArchive& Ar, class UPackageMap* M
 		{
 			RepBits |= 1 << 13;
 		}
+		if (!DeathImpulse.IsZero())
+		{
+			RepBits |= 1 << 14;
+		}
+		if (!KnockBackForce.IsZero())
+		{
+			RepBits |= 1 << 15;
+		}
 	}
 
 	// 把 RepBits 自己写/读一下，让双方都知道“哪些字段会被同步”
-	// ⚠ 这里写的是 13，表示只处理 bit[0..12] 一共13位；
-	//    但上面用到了第13位（DamageType），加起来是 14 位（0..13）。
-	//    这样会把第13位“截掉”，导致 DamageType 不会被同步。
-	Ar.SerializeBits(&RepBits, 13);
+	Ar.SerializeBits(&RepBits, 15);
 
 	// 如果第0位为1：同步 Instigator
 	if (RepBits & (1 << 0))
@@ -256,7 +261,14 @@ bool FAuraGameplayEffectContext::NetSerialize(FArchive& Ar, class UPackageMap* M
 		// 调用 Tag 自己的 NetSerialize
 		DamageType->NetSerialize(Ar, Map, bOutSuccess);
 	}
-	
+	if (RepBits & (1 << 14))
+	{
+		DeathImpulse.NetSerialize(Ar, Map, bOutSuccess);
+	}
+	if (RepBits & (1 << 15))
+	{
+		KnockBackForce.NetSerialize(Ar, Map, bOutSuccess);
+	}
 	// 如果是“读入完成”，把 Instigator/EffectCauser 的关系补回 Context 内部
 	if (Ar.IsLoading())
 	{

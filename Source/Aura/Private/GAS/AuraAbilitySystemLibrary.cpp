@@ -310,6 +310,28 @@ FGameplayTag UAuraAbilitySystemLibrary::GetDamageType(const FGameplayEffectConte
 	return FGameplayTag();
 }
 
+FVector UAuraAbilitySystemLibrary::GetDeathImpulse(const FGameplayEffectContextHandle& EffectContextHandle)
+{
+	if (const FAuraGameplayEffectContext* AuraEffectContext = static_cast<const FAuraGameplayEffectContext*>(EffectContextHandle.Get()))
+	{
+		return AuraEffectContext->GetDeathImpulse();
+	}
+	
+	return FVector::ZeroVector;
+}
+
+FVector UAuraAbilitySystemLibrary::GetKnockBackForce(const FGameplayEffectContextHandle& EffectContextHandle)
+{
+	
+	if (const FAuraGameplayEffectContext* AuraEffectContext = static_cast<const FAuraGameplayEffectContext*>(EffectContextHandle.Get()))
+	{
+		
+		return AuraEffectContext->GetKnockBackForce();
+	}
+
+	return FVector::ZeroVector;
+}
+
 bool UAuraAbilitySystemLibrary::IsCriticalHit(const FGameplayEffectContextHandle& EffectContextHandle)
 {
 	// 尝试将传入的 EffectContextHandle 转换为 FAuraGameplayEffectContext 指针
@@ -381,6 +403,22 @@ void UAuraAbilitySystemLibrary::SetDamageType(FGameplayEffectContextHandle& Effe
 	{
 		const TSharedPtr<FGameplayTag> DamageType = MakeShared<FGameplayTag>(InDamageType);
 		AuraEffectContext->SetDamageType(DamageType);
+	}
+}
+
+void UAuraAbilitySystemLibrary::SetDeathImpulse(FGameplayEffectContextHandle& EffectContextHandle,const FVector& InImpulse)
+{
+	if (FAuraGameplayEffectContext* AuraEffectContext = static_cast<FAuraGameplayEffectContext*>(EffectContextHandle.Get()))
+	{
+		AuraEffectContext->SetDeathImpulse(InImpulse);
+	}
+}
+
+void UAuraAbilitySystemLibrary::SetKnockBackForce(FGameplayEffectContextHandle& EffectContextHandle,const FVector& InForce)
+{
+	if (FAuraGameplayEffectContext* AuraEffectContext = static_cast<FAuraGameplayEffectContext*>(EffectContextHandle.Get()))
+	{
+		AuraEffectContext->SetKnockBackForce(InForce);
 	}
 }
 
@@ -496,8 +534,11 @@ FGameplayEffectContextHandle UAuraAbilitySystemLibrary::ApplyDamageEffect(const 
 	FGameplayEffectContextHandle EffectContextHandle = DamageEffectParams.SourceAbilitySystemComponent->MakeEffectContext();
 
 	// 将来源对象写入 Context（这里用 Avatar 本体；也可换成武器/技能实例）。Execution Calculation 与 GameplayCue 都能读取到
-	EffectContextHandle.AddSourceObject(SourceAvatarActor); 
-
+	EffectContextHandle.AddSourceObject(SourceAvatarActor);
+	//设置死亡冲击向量
+	SetDeathImpulse(EffectContextHandle,DamageEffectParams.DeathImpulse);
+	//设置击退力
+	SetKnockBackForce(EffectContextHandle,DamageEffectParams.KnockBackForce);
 	// 基于 GE 类、技能等级与 Context 生成“效果规格单”Spec
 	// 注意：SpecHandle 内部持有到 FGameplayEffectSpec 的共享指针；生成成功后再写入各类 SetByCaller
 	const FGameplayEffectSpecHandle SpecHandle =

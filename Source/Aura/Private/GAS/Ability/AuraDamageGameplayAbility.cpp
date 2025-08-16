@@ -85,11 +85,21 @@ FDamageEffectParams UAuraDamageGameplayAbility::MakeDamageEffectParamsFromClassD
     Params.DebuffDamage = DebuffDamage; // 减益每跳伤害
     Params.DebuffDuration = DebuffDuration; // 减益持续时间
     Params.DebuffFrequency = DebuffFrequency; // 减益触发频率
-
+    Params.DeathImpulseMagnitude = DeathImpulseMagnitude;// 死亡冲击强度
+    Params.KnockBackForceMagnitude = KnockBackForceMagnitude;// 击退力度
+    Params.KnockBackChance = KnockBackChance; //击退几率
+    if (IsValid(TargetActor))
+    {
+        FRotator Rotation = (TargetActor->GetActorLocation() - GetAvatarActorFromActorInfo()->GetActorLocation()).Rotation();
+        Rotation.Pitch = 45.f;
+        const FVector ToTarget = Rotation.Vector();
+        Params.DeathImpulse = ToTarget * DeathImpulseMagnitude;
+        Params.KnockBackForce = ToTarget * KnockBackForceMagnitude;
+    }
     return Params; // 返回完整参数结构体，便于后续统一使用
 }
 
-
+    
 /**
  * @brief 从动画蒙太奇数组中随机获取一个带标签的动画
  *
