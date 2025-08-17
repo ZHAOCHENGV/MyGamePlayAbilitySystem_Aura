@@ -193,8 +193,7 @@ void UAuraAttributeSet::HandleIncomingDamage(const FEffectProperties& Props)
 	// 步骤 3：仅当伤害>0 时才进行后续处理
 	if (LocalIncomingDamage > 0)
 	{
-		// 步骤 3.1：计算新血量 = 旧血量 - 伤害
-		const float NewHealth = GetHealth() - LocalIncomingDamage; // 扣血
+	const float NewHealth = GetHealth() - LocalIncomingDamage; // 扣血
 	
 		// 步骤 3.2：写回并 Clamp 到 [0, MaxHealth]
 		SetHealth(FMath::Clamp(NewHealth,0,GetMaxHealth())); // 防止越界

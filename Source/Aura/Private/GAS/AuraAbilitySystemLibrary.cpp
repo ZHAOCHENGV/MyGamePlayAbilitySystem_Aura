@@ -572,16 +572,114 @@ FGameplayEffectContextHandle UAuraAbilitySystemLibrary::ApplyDamageEffect(const 
 	return EffectContextHandle; 
 }
 
-
-bool UAuraAbilitySystemLibrary::IsNotFriend(AActor* FirstActor, AActor* SecondActor)
+/**
+ * @brief 生成一组“角度均匀分布”的旋转（Rotator）
+ * @param Forward   前方方向向量（基准朝向）
+ * @param Axis      旋转所围绕的轴（通常是世界Up向量）
+ * @param Spread    总扩散角度（度数，左右总角度范围）
+ * @param NumRotators 需要生成的旋转数量
+ * @return Rotators 结果：等间距分布的旋转数组
+ * @details
+ *  - 【作用】比如发射扇形子弹，每颗子弹要有不同的旋转方向，但又要平均分布。
+ *  - 【流程】
+ *    1) 先求出最左边的方向（Forward 绕 Axis 旋转 -Spread/2）；
+ *    2) 如果数量>1：按等分角度依次旋转，生成多个方向；
+ *    3) 如果数量=1：直接返回 Forward。
+ */
+TArray<FRotator> UAuraAbilitySystemLibrary::EvenlySpacedRotators(const FVector& Forward, const FVector& Axis, float Spread, int32 NumRotators)
 {
-	const bool bBothArePlayers = FirstActor->ActorHasTag(FName("Player")) && SecondActor->ActorHasTag(FName("Player"));
-	const bool bBothAreEnemies = FirstActor->ActorHasTag(FName("Enemy")) && SecondActor->ActorHasTag(FName("Enemy"));
-	const bool bFriends = bBothArePlayers || bBothAreEnemies;
-	return !bFriends;
+	TArray<FRotator> Rotators; // 存放最终结果
+	
+	// 先算“扇形最左边”的方向
+	const FVector LeftOfSpread = Forward.RotateAngleAxis(-Spread /2.f, Axis);
+	
+	if (NumRotators > 1)
+	{
+		// 每个方向之间的角度间隔
+		const float DeltaSpread = Spread / (NumRotators - 1);
+		
+		// 循环生成多个旋转
+		for (int32 i = 0; i < NumRotators; i++)
+		{
+			// 从最左边开始，逐步加角度，得到新方向
+			const FVector Direction = LeftOfSpread.RotateAngleAxis(DeltaSpread * i, FVector::UpVector);
+			
+			// 把方向转换成 Rotator（旋转）
+			Rotators.Add(Direction.Rotation());
+		}
+	}
+	else
+	{
+		// 只有一个，直接用原 Forward
+		Rotators.Add(Forward.Rotation());
+	}
+	return Rotators;
+}
+
+/**
+ * @brief 生成一组“角度均匀分布”的向量（Vector）
+ * @param Forward   前方方向向量（基准朝向）
+ * @param Axis      旋转所围绕的轴
+ * @param Spread    总扩散角度
+ * @param NumVectors 需要生成的向量数量
+ * @return Vectors 结果：等间距分布的方向向量数组
+ * @details
+ *  - 和 EvenlySpacedRotators 一样，只是返回的是方向向量，而不是 Rotator。
+ *  - 常用于：投射物发射、检测方向、特效扩散等。
+ */
+TArray<FVector> UAuraAbilitySystemLibrary::EvenlyRotatedVectors(const FVector& Forward, const FVector& Axis, float Spread, int32 NumVectors)
+{
+	TArray<FVector> Vectors; // 存放最终结果
+	
+	// 先算“扇形最左边”的方向
+	const FVector LeftOfSpread = Forward.RotateAngleAxis(-Spread /2.f, Axis);
+	
+	if (NumVectors > 1)
+	{
+		// 每个方向之间的角度间隔
+		const float DeltaSpread = Spread / (NumVectors - 1);
+		
+		for (int32 i = 0; i < NumVectors; i++)
+		{
+			// 按角度逐个生成方向向量
+			const FVector Direction = LeftOfSpread.RotateAngleAxis(DeltaSpread * i, FVector::UpVector);
+			Vectors.Add(Direction);
+		}
+	}
+	else
+	{
+		// 只有一个方向，就直接 Forward
+		Vectors.Add(Forward);
+	}
+	return Vectors;
 }
 
 
+
+/**
+ * @brief 判断两个 Actor 是否“不是朋友”
+ * @param FirstActor  第一个角色
+ * @param SecondActor 第二个角色
+ * @return bool 结果：true=敌对（不是朋友），false=朋友
+ * @details
+ *  - 如果两个都是 Player，说明是队友 → 返回 false
+ *  - 如果两个都是 Enemy，说明是同阵营 → 返回 false
+ *  - 其他情况 → 不是朋友 → 返回 true
+ */
+bool UAuraAbilitySystemLibrary::IsNotFriend(AActor* FirstActor, AActor* SecondActor)
+{
+	// 是否都是玩家
+	const bool bBothArePlayers = FirstActor->ActorHasTag(FName("Player")) && SecondActor->ActorHasTag(FName("Player"));
+	
+	// 是否都是敌人
+	const bool bBothAreEnemies = FirstActor->ActorHasTag(FName("Enemy")) && SecondActor->ActorHasTag(FName("Enemy"));
+	
+	// 好友关系：同为玩家 或 同为敌人
+	const bool bFriends = bBothArePlayers || bBothAreEnemies;
+	
+	// 返回“不是朋友”
+	return !bFriends;
+}
 
 
 

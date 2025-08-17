@@ -2,7 +2,13 @@
 
 
 #include "GAS/Ability/AuraFireBolt.h"
+
+#include "AbilitySystemBlueprintLibrary.h"
 #include "AuraGamePlayTags.h"
+#include "Actor/AuraProjectile.h"
+#include "GameFramework/ProjectileMovementComponent.h"
+#include "GAS/AuraAbilitySystemLibrary.h"
+#include "Kismet/KismetSystemLibrary.h"
 
 /**
  * 获取指定等级下火焰箭技能的描述文本
@@ -98,3 +104,94 @@ FString UAuraFireBolt::GetNextLevelDescription(int32 Level)
 			FMath::Min(Level,NumProjectiles),
 			ScaleDamage);
 }
+
+/**
+ * @brief 在服务器上生成一批可跟踪（Homing）的火焰投射物，朝给定目标位置扇形发射
+ * @param ProjectileTargetLocation 目标世界坐标（用于计算初始朝向/无锁定目标时的临时跟踪点）
+ * @param SocketTag                发射用 Socket 的 GameplayTag（从角色或武器上取 Socket 位置）
+ * @param bOverridePitch           是否覆盖俯仰角 Pitch（用于抬高/压低初始弹道）
+ * @param PitchOverride            覆盖时使用的 Pitch 角（度）
+ * @param HomingTarget             可选：锁定的跟踪目标 Actor（若为空则使用一个临时 SceneComponent 作为跟踪点）
+ * @details
+ *  - 【作用】按“扇形均匀分布”的多方向，延迟生成（Deferred Spawn）一组弹体；为每个弹体配置伤害参数与跟踪目标。
+ *  - 【背景】Deferred Spawn 允许在 FinishSpawning 前设置构造参数；Homing 通过 ProjectileMovement 的 HomingTargetComponent 指向一个组件。
+ *  - 【流程】
+ *    1) 仅在服务器生成（HasAuthority）；取 Combat Socket 世界位置；
+ *    2) 算出从 Socket 指向目标的旋转，必要时覆盖 Pitch；得到 Forward 向量；
+ *    3) 取“有效发射数量”（本地 NumProjectiles 与 Ability 等级取最小值），并根据扇形角生成等间距旋转；
+ *    4) 循环：Deferred Spawn 投射物 → 写入伤害参数 → 设置 Homing 目标（锁定 Actor 或临时组件）→ 随机加速度 → 完成生成。
+ *  - 【注意】
+ *    - 需确保服务器-客户端一致性：只在服务器 Spawn，复制由投射物自身的 Replication 设置完成。
+ *    - 若使用临时 SceneComponent 作为 Homing 目标，必须有合适的 Outer/注册（见下方“优化建议”）。
+ */
+void UAuraFireBolt::SpawnProjectiles(const FVector& ProjectileTargetLocation, const FGameplayTag& SocketTag,bool bOverridePitch, float PitchOverride, AActor* HomingTarget)
+{
+	// 检查当前是否在服务器上运行（仅在服务器上允许生成投射物）
+	const bool bIsServer = GetAvatarActorFromActorInfo()->HasAuthority();
+	if(!bIsServer)return; // 非服务器则直接返回，避免多端重复生成
+
+	// 获取实现了 ICombatInterface 接口的角色对象（通常是玩家或AI）
+	ICombatInterface* CombatInterface = Cast<ICombatInterface>(GetAvatarActorFromActorInfo()); // 可用于扩展（此处未直接使用）
+	
+	// 获取投射物生成的起始位置（通常是角色的某个武器或手部的 Socket 位置）
+	const FVector SocketLocation = ICombatInterface::Execute_GetCombatSocketLocation(GetAvatarActorFromActorInfo(),SocketTag); // 发射口坐标
+	//DrawDebugSphere(GetWorld(), SocketLocation, 10.0f, 12, FColor::Red, false, 2.0f);
+
+	// 计算投射物生成的旋转方向
+	// Rotation 是从起始位置（SocketLocation）指向目标位置（ProjectileTargetLocation）的旋转
+	FRotator Rotation = (ProjectileTargetLocation - SocketLocation).Rotation(); // 朝向目标的初始旋转
+
+	//是否开启Pitch轴偏移
+	if(bOverridePitch)Rotation.Pitch = PitchOverride; // 覆盖俯仰角（抬高/压低弹道）
+
+	// 将旋转转成方向向量（Forward）
+	const FVector Forward = Rotation.Vector(); // 基准前向
+
+	// 计算实际发射数量：不超过技能等级（例如一级只发 1 发）
+	const int32 EffectiveNumProjectiles = FMath::Min(NumProjectiles,GetAbilityLevel()); // 发射数量上限
+
+	// 根据扇形角度与数量，生成等间隔的旋转序列（围绕世界 Up 轴展开）
+	TArray<FRotator> Rotations = UAuraAbilitySystemLibrary::EvenlySpacedRotators(Forward, FVector::UpVector, ProjectileSpread, EffectiveNumProjectiles); // 扇形旋转集
+
+	// 遍历每个方向，逐个生成投射物
+	for (const FRotator Rot : Rotations)
+	{
+		// 初始化用于生成投射物的变换信息（位置和旋转）
+		FTransform SpawnTransform; // 生成变换
+		SpawnTransform.SetLocation(SocketLocation); // 设置位置
+		SpawnTransform.SetRotation(Rot.Quaternion()); // 设置旋转
+
+		// 延迟生成投射物（使用 SpawnActorDeferred 允许在生成之前进行额外设置）
+		AAuraProjectile* Projectile = GetWorld()->SpawnActorDeferred<AAuraProjectile>(
+			ProjectileClass,                                  // 投射物的类
+			SpawnTransform,                                  // 生成时的位置和旋转
+			GetOwningActorFromActorInfo(),                  // 投射物的拥有者
+			Cast<APawn>(GetOwningActorFromActorInfo()),     // 投射物的“实例化者”（通常是 Pawn，表示角色）
+			ESpawnActorCollisionHandlingMethod::AlwaysSpawn // 碰撞处理方法（始终生成）
+		);
+		//设置投射物默认伤害效果参数
+		Projectile->DamageEffectParams = MakeDamageEffectParamsFromClassDefaults(); // 赋默认伤害参数（GE/等级/SetByCaller等）
+		
+		// 配置 Homing 目标：优先使用传入的锁定 Actor；否则创建临时跟踪点
+		if (HomingTarget && HomingTarget->Implements<UCombatInterface>())
+		{
+			Projectile->ProjectileMovement->HomingTargetComponent = HomingTarget->GetRootComponent(); // 以目标根组件为 Homing 目标
+		}
+		else
+		{
+			Projectile->HomingTargetSceneComponent = NewObject<USceneComponent>(USceneComponent::StaticClass()); // 创建临时目标组件（见优化建议）
+			Projectile->HomingTargetSceneComponent->SetWorldLocation (ProjectileTargetLocation); // 放在指定世界坐标
+			Projectile->ProjectileMovement->HomingTargetComponent = Projectile->HomingTargetSceneComponent; // 使用该组件作为 Homing 目标
+		}
+
+		// 设置 Homing 加速度范围（给每发弹体一定随机性）
+		Projectile->ProjectileMovement->HomingAccelerationMagnitude = FMath::FRandRange(HomingAccelerationMin, HomingAccelerationMax); // 随机加速度
+
+		// 控制是否启用 Homing（由配置开关决定）
+		Projectile->ProjectileMovement->bIsHomingProjectile = bLaunchHomingProjectiles; // 启用/禁用跟踪
+		
+		// 完成投射物的生成，并应用最终的生成变换信息
+		Projectile->FinishSpawning(SpawnTransform); // 结束延迟生成（Spawn 完毕，进入世界）
+	}
+}
+

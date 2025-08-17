@@ -34,6 +34,10 @@ public:
 	UPROPERTY(VisibleAnywhere,BlueprintReadOnly)
 	TObjectPtr<USphereComponent> Sphere;
 
+	//归位目标的场景组件
+	UPROPERTY()
+	TObjectPtr<USceneComponent> HomingTargetSceneComponent;
+
 protected:
 	virtual void BeginPlay() override;
 	void OnHit();
