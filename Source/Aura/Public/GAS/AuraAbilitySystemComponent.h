@@ -54,6 +54,8 @@ public:
 	//添加角色被动技能
 	void AddCharacterPassiveAbilities(const TArray<TSubclassOf<UGameplayAbility>> & StartUpPassiveAbilities);
 
+	//技能输入标签按下
+	void AbilityInputTagPressed(const FGameplayTag& InputTag);
 	//按住按键 Tag
 	void AbilityInputTagHeld(const FGameplayTag& InputTag);
 	//释放按键 Tag

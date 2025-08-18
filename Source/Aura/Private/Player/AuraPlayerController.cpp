@@ -9,6 +9,7 @@
 #include "EnhancedInputSubsystems.h"
 #include "NavigationPath.h"
 #include "NavigationSystem.h"
+#include "NiagaraFunctionLibrary.h"
 #include "Components/SplineComponent.h"
 #include "GAS/AuraAbilitySystemComponent.h"
 #include "Input/AuraInputComponent.h"
@@ -171,110 +172,141 @@ void AAuraPlayerController::CursorTrace()
 
 }
 
+/**
+ * @brief 处理“按下”类型的输入标签：左键按下时切换目标锁定并关闭自动奔跑；其他输入透传到 ASC
+ * @param InputTag 按下的输入标签（例如 LMB、技能热键等）
+ * @details
+ *  - 左键（LMB）按下：若有当前选中目标则进入 bTargeting（目标锁定），同时关闭 bAutoRunning。
+ *  - 无论何种输入，都会把该 InputTag 转发给 ASC 的 AbilityInputTagPressed 以驱动 GA。
+ *  - 仅在“按下瞬间”调用；持续按住逻辑在 AbilityInputTagHeld，松开逻辑在 AbilityInputTagReleased。
+ */
 void AAuraPlayerController::AbilityInputTagPressed(FGameplayTag InputTag)
 {
-	//判断输入标签是否完全匹配左键标签（LMB = 鼠标左键）
-	if (InputTag.MatchesTagExact(FAuraGamePlayTags::Get().InputTag_LMB))
+	// 判断输入是否为“鼠标左键”（完全匹配 LMB Tag）
+	if (InputTag.MatchesTagExact(FAuraGamePlayTags::Get().InputTag_LMB)) // LMB 按下
 	{
-		// 如果当前有选中的目标对象，则开启目标锁定状态，否则关闭目标锁定
-		bTargeting = ThisActor ? true : false;
-		// 无论如何都取消自动奔跑状态
-		bAutoRunning = false;
+		// 若当前存在 ThisActor（表示有选中目标），则进入目标锁定；否则不锁定
+		bTargeting = ThisActor ? true : false; // 根据是否有目标切换锁定
+		// 无论是否锁定，按下 LMB 都会关闭“自动奔跑”
+		bAutoRunning = false; // 停止自动寻路/奔跑
 	}
+	// 如果 ASC 存在，则把“按下”事件透传给 ASC（用于触发/预测能力）
+	if (GetASC())
+	{
+		// 透传给能力系统
+		GetASC()->AbilityInputTagPressed(InputTag);
+	} 
 }
 
+/**
+ * @brief 处理“松开”类型的输入标签：非左键直接透传；左键松开时可能触发一次“点地移动/自动奔跑”
+ * @param InputTag 松开的输入标签
+ * @details
+ *  - 非 LMB：仅把 Released 事件转发给 ASC，立即返回（与移动无关）。
+ *  - LMB：释放后若“未在目标锁定且未自动奔跑”，并且按住时间小于阈值 → 走一次点击寻路，绘制路径并启动自动奔跑。
+ *  - 释放后统一重置 FollowTime，并退出目标锁定。
+ */
 void AAuraPlayerController::AbilityInputTagReleased(FGameplayTag InputTag)
 {
-	//判断输入标签是否完全不匹配左键标签（LMB = 鼠标左键）
-	if (!InputTag.MatchesTagExact(FAuraGamePlayTags::Get().InputTag_LMB))
+	// 若不是“鼠标左键”，只需要把“松开”事件发给 ASC，然后返回
+	if (!InputTag.MatchesTagExact(FAuraGamePlayTags::Get().InputTag_LMB)) // 非 LMB
 	{
-		// 如果能力系统组件 (ASC) 存在，则调用它的 AbilityInputTagReleased 方法
+		// ASC 存在则透传松开事件
 		if(GetASC())
 		{
-			GetASC()->AbilityInputTagReleased(InputTag);
+			GetASC()->AbilityInputTagReleased(InputTag); // 通知能力系统
 		}
-		return;// 直接返回，处理完左键逻辑
+		return; // 结束：非左键不涉及移动逻辑
 	}
 
-	// 通过能力系统组件处理释放的输入标签
-	if (GetASC()) GetASC()->AbilityInputTagReleased(InputTag);
+	// 是 LMB：先把“松开”事件交给 ASC（技能释放/取消等）
+	if (GetASC()) GetASC()->AbilityInputTagReleased(InputTag); // 通知能力系统
 	
-	// 如果当前不是处于目标锁定模式并且没有按下shift
+	// 若当前不在目标锁定，且不处于自动奔跑状态 → 可能触发一次“点击寻路”
 	if(!bTargeting && !bAutoRunning) 
 	{
-		
-		// 获取当前玩家控制的角色
-		const APawn * ControlledPawn = GetPawn();
-		// 如果按住时间短于短按阈值，并且角色存在
+		// 取当前玩家控制的 Pawn
+		const APawn * ControlledPawn = GetPawn(); // 受控角色
+		// 若按住时间小于“短按阈值”，且 Pawn 有效 → 视为一次“点击移动”
 		if (FollowTime <= ShortPressThreshold && ControlledPawn)
 		{
-			// 使用导航系统同步查找从角色当前位置到缓存目标位置的路径
-			if (UNavigationPath * NavPath = UNavigationSystemV1::FindPathToLocationSynchronously(this,ControlledPawn->GetActorLocation(),CachedDestination))
+			// 使用导航系统同步计算从 Pawn 到 CachedDestination 的路径
+			if (UNavigationPath * NavPath = UNavigationSystemV1::FindPathToLocationSynchronously(this,ControlledPawn->GetActorLocation(),CachedDestination)) // 查路径
 			{
-				// 清除当前样条曲线上的所有点
-				Spline->ClearSplinePoints();
-				// 遍历路径点，添加到样条曲线并绘制调试用的黄色球体
-				for (const FVector& PointLoc :NavPath->PathPoints)
+				// 清空样条上的旧路径点
+				Spline->ClearSplinePoints(); // 清路径
+				// 把导航路径的各点写入样条（用于可视化或沿样条移动）
+				for (const FVector& PointLoc :NavPath->PathPoints) // 遍历路径点
 				{
-					Spline->AddSplinePoint(PointLoc,ESplineCoordinateSpace::World);
+					Spline->AddSplinePoint(PointLoc,ESplineCoordinateSpace::World); // 加入样条
 				}
 				
+				// 若确实有路径点，更新最终目的地并开启自动奔跑
 				if (NavPath->PathPoints.Num() > 0)
 				{
-					//将路径最后一个点赋值给目标地点
-					CachedDestination = NavPath->PathPoints[NavPath->PathPoints.Num() - 1];
-					// 启用自动奔跑状态
-					bAutoRunning = true;
+					// 以路径最后一个点作为最终落点
+					CachedDestination = NavPath->PathPoints[NavPath->PathPoints.Num() - 1]; // 更新目标
+					// 开启自动奔跑（Tick/其他逻辑据此沿样条前进）
+					bAutoRunning = true; // 启动自动奔跑
 				}
-				
 			}
-	
+			// 在点击位置播放一个 Niagara 效果，作为点击反馈
+			UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, ClickNiagaraSystem, CachedDestination); // 点击特效
 		}
 	
-		// 重置按住时间
-		FollowTime = 0.f;
-		// 退出目标锁定模式
-		bTargeting = false;
+		// 释放后重置“按住计时”
+		FollowTime = 0.f; // 计时清零
+		// 释放左键后退出“目标锁定”（与按下时的进入相对）
+		bTargeting = false; // 退出锁定
 	}
 }
 
+/**
+ * @brief 处理“按住”类型的输入标签：左键按住时进行“长按寻路/即时移动”或转发给 ASC
+ * @param InputTag 按住的输入标签
+ * @details
+ *  - 非 LMB：仅把 Held 事件转发到 ASC。
+ *  - LMB：
+ *    * 若处于目标锁定或按着 Shift：将 Held 事件交给 ASC（例如引导技能/持续释放）。
+ *    * 否则：把按住时间累加为 FollowTime；持续更新 CachedDestination=光标命中点；并给 Pawn 施加移动输入（即时跟随光标点）。
+ */
 void AAuraPlayerController::AbilityInputTagHeld(FGameplayTag InputTag)
 {
-	//判断输入标签是否完全不匹配左键标签（LMB = 鼠标左键）
-	if (!InputTag.MatchesTagExact(FAuraGamePlayTags::Get().InputTag_LMB))
+	// 非左键：只把“Held”事件交给 ASC
+	if (!InputTag.MatchesTagExact(FAuraGamePlayTags::Get().InputTag_LMB)) // 非 LMB
 	{
-		// 如果能力系统组件 (ASC) 存在，则调用它的 AbilityInputTagHeld 方法
 		if(GetASC())
 		{
-			GetASC()->AbilityInputTagHeld(InputTag);
+			GetASC()->AbilityInputTagHeld(InputTag); // 透传给能力系统
 		}
-		return;// 直接返回，处理完左键逻辑
+		return; // 返回：非 LMB 不做移动逻辑
 	}
-	// 如果当前处于目标锁定状态或按下shift状态下
+
+	// 左键被按住：若当前在目标锁定模式或按下 Shift，则把 Held 交给 ASC（技能持续输入）
 	if (bTargeting||bShiftKeyDown)
 	{
-		// 通过 ASC 处理按住的输入标签
 		if (GetASC())
 		{
-			GetASC()->AbilityInputTagHeld(InputTag);
+			GetASC()->AbilityInputTagHeld(InputTag); // 交由能力系统处理（如引导型技能）
 		}
 	}
-	else//否则
+	else // 否则：进行“长按寻路/即时移动”逻辑
 	{
-		// 增加按住的时间，用于计算长按行为
-		FollowTime += GetWorld()->GetDeltaSeconds();
-		if (CursorHit.bBlockingHit)
+		// 累加按住时长（用于区分短按/长按）
+		FollowTime += GetWorld()->GetDeltaSeconds(); // 递增计时
+		
+		// 若光标命中有效，持续更新目标点（用于即时跟随）
+		if (CursorHit.bBlockingHit) // 命中了地面/可行走区域
 		{
-			// 缓存命中点的坐标
-			CachedDestination = CursorHit.ImpactPoint;
+			CachedDestination = CursorHit.ImpactPoint; // 刷新目标点
 		}
-		// 获取当前玩家控制的角色
+		// 获取玩家当前 Pawn
 		if (APawn * ControlledPawn = GetPawn())
 		{
-			// 计算从角色位置到目标位置的方向向量
-			const FVector WorldDirection = (CachedDestination - ControlledPawn->GetActorLocation()).GetSafeNormal();
-			// 对角色施加移动输入，朝向目标点移动
-			ControlledPawn->AddMovementInput(WorldDirection);
+			// 计算从 Pawn 到目标点的单位方向
+			const FVector WorldDirection = (CachedDestination - ControlledPawn->GetActorLocation()).GetSafeNormal(); // 方向
+			// 给 Pawn 施加移动输入（基于 CharacterMovement）
+			ControlledPawn->AddMovementInput(WorldDirection); // 即时向目标点移动
 		}
 	}
 }
