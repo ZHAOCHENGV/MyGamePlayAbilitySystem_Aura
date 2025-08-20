@@ -654,6 +654,49 @@ TArray<FVector> UAuraAbilitySystemLibrary::EvenlyRotatedVectors(const FVector& F
 	return Vectors;
 }
 
+/**
+ * @brief 从 FGameplayAbilitySpec 中“安全地”获取本次激活应使用的 PredictionKey（实例优先，失败回退）
+ * @param Spec 目标能力规格（包含授予方式、实例列表、旧 ActivationInfo 等）
+ * @return FPredictionKey 返回用于路由 InputPressed/Released 等事件的预测键
+ *
+ * 功能说明：
+ * - GAS 中 Instanced 能力的“正确预测键”保存在“能力实例”的 CurrentActivationInfo 里；
+ * - 旧的 `Spec.ActivationInfo` 仅对 NonInstanced 能力有效（且已被弃用），继续使用会导致事件路由不到当前实例；
+ * - 本函数按优先级依次尝试：PrimaryInstance → 任一有效实例 → 回退到旧字段，最大化兼容并消除警告。
+ *
+ * 详细流程：
+ * 1) 通过 Spec.GetPrimaryInstance() 直接获取主实例（InstancedPerActor 的常见路径）；
+ * 2) 若无主实例，则枚举 Spec.GetAbilityInstances()，找一个含“有效 PredictionKey”的实例；
+ * 3) 若仍未找到，回退使用 Spec.ActivationInfo（兼容 NonInstanced 或少见时序）。
+ *
+ * 注意事项：
+ * - 推荐在发送 `InvokeReplicatedEvent(InputPressed/Released, Handle, PredKey)` 前使用本函数取键；
+ * - 与 `UAbilityTask_WaitInputPress/Release` 配合时，可在任务创建时设置 `bTestAlreadyPressed/Released=true` 兜底极端时序；
+ * - 若你的 GA 是 InstancedPerExecution，可能同时存在多个实例，步骤 2 会选取一个“键有效”的实例以保证事件能被路由。
+ */
+FPredictionKey UAuraAbilitySystemLibrary::AuraGetPredictionKeyFromSpec_Safe(const FGameplayAbilitySpec& Spec) 
+{
+	// 步骤 1：优先尝试获取“主实例”（InstancedPerActor 模式通常稳定存在）
+	if (UGameplayAbility* Primary = Spec.GetPrimaryInstance()) // 若存在主实例
+	{
+		return Primary->GetCurrentActivationInfo().GetActivationPredictionKey(); // 直接从实例的 CurrentActivationInfo 取 PredictionKey
+	}
+
+	// 步骤 2：若没有主实例，则遍历所有实例，挑一个“键有效”的
+	const TArray<UGameplayAbility*> Instances = Spec.GetAbilityInstances(); // 获取当前 Spec 的所有实例（InstancedPerExecution 可能有多个）
+	for (UGameplayAbility* Inst : Instances) // 逐个检查实例
+	{
+		if (!Inst) continue; // 判空防护
+		const FPredictionKey Key = Inst->GetCurrentActivationInfo().GetActivationPredictionKey(); // 取该实例的预测键
+		if (Key.IsValidKey()) // 若该键有效（非默认/未初始化）
+		{
+			return Key; // 找到了可用的 PredictionKey，立即返回
+		}
+	}
+
+	// 步骤 3：仍未找到 → 回退到旧字段（仅 NonInstanced 真正适用；也能兜住少见的过早调用时序）
+	return Spec.ActivationInfo.GetActivationPredictionKey(); // 兼容层：避免在极端情况下拿不到键
+}
 
 
 /**

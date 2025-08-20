@@ -16,6 +16,7 @@ class USpellMenuWidgetController;
 class UAbilitySystemComponent;
 class UAttributeMenuWidgetController;
 class UOverlayWidgetController;
+struct FPredictionKey;
 /**
  * 
  */
@@ -147,6 +148,9 @@ public:
 	//均匀旋转的矢量
 	UFUNCTION(BlueprintPure,Category = "AuraAbilitySystemLibrary|GameplayMechanics")
 	static TArray<FVector> EvenlyRotatedVectors(const FVector& Forward, const FVector& Axis, float Spread, int32 NumVectors);
+
+	UFUNCTION()
+	static FPredictionKey AuraGetPredictionKeyFromSpec_Safe(const FGameplayAbilitySpec& Spec);
 
 	
 

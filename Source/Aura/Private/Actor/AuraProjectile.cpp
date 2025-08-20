@@ -52,12 +52,22 @@ void AAuraProjectile::OnHit()
 	// 在投射物被销毁时播放音效（ImpactSound）和位置特效（ImpactEffect）
 	UGameplayStatics::PlaySoundAtLocation(this, ImpactSound, GetActorLocation(),FRotator::ZeroRotator);
 	UNiagaraFunctionLibrary::SpawnSystemAtLocation(this,ImpactEffect,GetActorLocation());
-	if (LoopingSoundComponent)LoopingSoundComponent->Stop();
+	if (LoopingSoundComponent)
+	{
+		LoopingSoundComponent->Stop();
+		LoopingSoundComponent->DestroyComponent();
+	}
+	
 	bHit = true;
 }
 
 void AAuraProjectile::Destroyed()
 {
+	if (LoopingSoundComponent)
+	{
+		LoopingSoundComponent->Stop();
+		LoopingSoundComponent->DestroyComponent();
+	}
 	// 如果投射物未命中目标（bHit 为 false）且当前没有服务器权限（客户端）
 	if (!bHit && !HasAuthority())OnHit();
 

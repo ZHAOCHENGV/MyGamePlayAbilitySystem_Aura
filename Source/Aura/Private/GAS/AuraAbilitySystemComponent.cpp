@@ -76,36 +76,39 @@ void UAuraAbilitySystemComponent::AddCharacterPassiveAbilities(const TArray<TSub
 }
 
 /**
- * @brief 处理“输入标签按下”（Pressed）：为匹配该输入的 GA 标记 InputPressed，必要时同步网络事件
+ * @brief 处理“输入标签按下”：匹配到的 GA 标记为按下；未激活则尝试激活，已激活则广播 InputPressed（带正确 PredictionKey）
  * @param InputTag 按下的输入标签（如 InputTag.LMB / InputTag.Skill.Q 等）
  * @details
- *  - 流程：校验标签 → 遍历可激活 GA → 若 GA 的动态标签精确包含该 InputTag，则调用 AbilitySpecInputPressed；
- *    若 GA 目前未激活，则广播一个通用复制事件（当前代码为 InputReleased，见注意事项）。
- *  - 注意：此实现使用了已弃用字段 DynamicAbilityTags，应切换到 GetDynamicSpecSourceTags()。
+ *  - 使用新 API：AbilitySpec.GetDynamicSpecSourceTags() 进行标签匹配（代替已弃用 DynamicAbilityTags）
+ *  - 遍历时使用 FScopedAbilityListLock，保证列表在迭代中的稳定性
+ *  - 通过 UAuraAbilitySystemLibrary::AuraGetPredictionKeyFromSpec_Safe 拿到实例上的 PredictionKey
  */
 void UAuraAbilitySystemComponent::AbilityInputTagPressed(const FGameplayTag& InputTag)
 {
-	// 检查输入标签是否有效，如果无效直接返回
+	// 1) 标签无效则不处理
 	if(!InputTag.IsValid())return;
-	FScopedAbilityListLock ActiveScopeLoc(*this);
-	// 遍历所有可激活的技能
-	// GetActivatableAbilities 获取当前组件中的所有可激活技能。
-	for (FGameplayAbilitySpec& AbilitySpec : GetActivatableAbilities())
+	// 2) 遍历期间加锁，防止列表在激活/授予时被修改
+	FScopedAbilityListLock ActiveScopeLoc(*this);// 作用域锁
+	// 3) 遍历当前所有可激活的 GA（AbilitySpec）
+	for (FGameplayAbilitySpec& AbilitySpec : GetActivatableAbilities())// 遍历所有可激活能力
 	{
-		// 检查当前技能的动态标签中是否有精确匹配的输入标签
-		if (AbilitySpec.GetDynamicSpecSourceTags().HasTagExact(InputTag))
+		// 4) 用“动态源标签”精确匹配输入标签（HasTagExact：要求完全一致）
+		if (AbilitySpec.GetDynamicSpecSourceTags().HasTagExact(InputTag))// 匹配到绑定该输入的 GA
 		{
-			// 标记该技能的输入为已按下（影响 GA 的 InputPressed 回调/内部状态）
+			// 5) 本地标记“输入按下”（影响 GA 内部的 InputPressed 状态/回调）
 			AbilitySpecInputPressed(AbilitySpec);
 
-			// 如果技能当前处于激活状态
+			// 6) 若 GA 已激活 → 广播“输入按下”复制事件（供任务/服务器路由）
 			if (AbilitySpec.IsActive())
 			{
-				TArray<UGameplayAbility*> Instances = AbilitySpec.GetAbilityInstances();
-				const FGameplayAbilityActivationInfo& ActivationInfo = Instances.Last()->GetCurrentActivationInfoRef();
-				FPredictionKey OriginalPredictionKey = ActivationInfo.GetActivationPredictionKey();
-				// 通用复制事件
-				InvokeReplicatedEvent(EAbilityGenericReplicatedEvent::InputPressed, AbilitySpec.Handle, OriginalPredictionKey);
+				// 6.1 从“实例”的 CurrentActivationInfo 中拿 PredictionKey（内部已做安全回退）
+				const FPredictionKey OriginalPredictionKey = UAuraAbilitySystemLibrary::AuraGetPredictionKeyFromSpec_Safe(AbilitySpec);
+				// 6.2 广播 InputPressed（客户端→服务器/其他端），保证 AbilityTask_WaitInputPress 能收到
+				InvokeReplicatedEvent(
+					EAbilityGenericReplicatedEvent::InputPressed,  // 事件类型：按下
+					AbilitySpec.Handle,                            // 该 GA 的句柄
+					OriginalPredictionKey                          // 正确的预测键
+					);
 			
 			}
 		}
@@ -147,26 +150,35 @@ void UAuraAbilitySystemComponent::AbilityInputTagHeld(const FGameplayTag& InputT
 	}
 }
 /**
- * @brief 处理“输入标签松开”事件：把松开状态同步到匹配的 GA，并广播网络复制事件
- * @param InputTag 松开的输入标签（如 InputTag.LMB / InputTag.Skill.Q 等）
+ * @brief 处理“输入标签松开”：匹配到且已激活的 GA 标记为松开，并广播 InputReleased（带正确 PredictionKey）
+ * @param InputTag 松开的输入标签
+ * @details
+ *  - 保证与 Pressed 对称：先本地标记 Released，再广播 InputReleased
+ *  - 使用新 API：AbilitySpec.GetDynamicSpecSourceTags()；并通过安全函数获取 PredictionKey
+ *  - WaitInputRelease 的 OnReleased 依赖正确的 PredictionKey 路由，否则不会触发
  */
 void UAuraAbilitySystemComponent::AbilityInputTagReleased(const FGameplayTag& InputTag)
 {
+	// 1) 标签无效则不处理
 	if(!InputTag.IsValid())return;                            // 1) 无效标签直接返回
-	FScopedAbilityListLock ActiveScopeLoc(*this);
+	// 2) 遍历期间加锁，防止容器被改动
+	FScopedAbilityListLock ActiveScopeLoc(*this); // 作用域锁
+	// 3) 遍历当前所有可激活的 GA
 	for (FGameplayAbilitySpec& AbilitySpec : GetActivatableAbilities()) // 2) 遍历所有可激活能力
 	{
-		// 3) 动态标签中是否“精确包含”该输入标签 且 该 GA 当前已激活？
-		if (AbilitySpec.DynamicAbilityTags.HasTagExact(InputTag) && AbilitySpec.IsActive())
+		// 4) 匹配到该输入标签，且 GA 当前处于激活中（只对激活中的 GA 广播松开）
+		if (AbilitySpec.GetDynamicSpecSourceTags().HasTagExact(InputTag) && AbilitySpec.IsActive())
 		{
-			// 4) 标记该技能“输入已释放”（影响 GA 的 InputReleased 回调等）
-			AbilitySpecInputReleased(AbilitySpec);             // 本地标记输入释放
-			TArray<UGameplayAbility*> Instances = AbilitySpec.GetAbilityInstances();
-			const FGameplayAbilityActivationInfo& ActivationInfo = Instances.Last()->GetCurrentActivationInfoRef();
-			FPredictionKey OriginalPredictionKey = ActivationInfo.GetActivationPredictionKey();
-			// 5) 广播“输入释放”的通用复制事件（让服务器/其他端同步这个输入变化）
-			// Invoke the InputPressed event. This is not replicated here. If someone is listening, they may replicate the InputPressed event to the server.
-			InvokeReplicatedEvent(EAbilityGenericReplicatedEvent::InputReleased, AbilitySpec.Handle, OriginalPredictionKey);
+			// 5) 本地标记“输入已释放”（影响 GA 内部 InputReleased 状态/回调）
+			AbilitySpecInputReleased(AbilitySpec);// 标记松开
+			// 6) 从“实例”的 CurrentActivationInfo 获取预测键（若无实例则内部回退旧字段）
+			const  FPredictionKey OriginalPredictionKey = UAuraAbilitySystemLibrary::AuraGetPredictionKeyFromSpec_Safe(AbilitySpec);
+			// 7) 广播“输入释放”复制事件（ASC→GA→AbilityTask）；WaitInputRelease 的 OnReleased 才会触发
+			InvokeReplicatedEvent(
+				EAbilityGenericReplicatedEvent::InputReleased, // 事件类型：松开
+				AbilitySpec.Handle,                            // 该 GA 的句柄
+				OriginalPredictionKey                         // 正确的预测键
+				);
 		
 		}
 	}

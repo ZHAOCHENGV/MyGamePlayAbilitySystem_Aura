@@ -126,6 +126,10 @@ void AAuraPlayerController::ShowDamageNumber_Implementation(float DamageAmount, 
 
 void AAuraPlayerController::Move(const struct FInputActionValue& InputActionValue)
 {
+	if (GetASC() && GetASC()->HasMatchingGameplayTag(FAuraGamePlayTags::Get().Player_Block_InputPressed))
+	{
+		return;
+	}
 	//从InputActionValue 提取输入的2D向量
 	const FVector2D InputAxisVector2D = InputActionValue.Get<FVector2D>();
 	//获取当前控制器旋转
@@ -152,7 +156,14 @@ void AAuraPlayerController::Move(const struct FInputActionValue& InputActionValu
 //鼠标下检测跟踪
 void AAuraPlayerController::CursorTrace()
 {
-
+	if (GetASC() && GetASC()->HasMatchingGameplayTag(FAuraGamePlayTags::Get().Player_Block_CursorTrace))
+	{
+		if (LastActor)LastActor->UnHigHlightActor();
+		if (ThisActor)ThisActor->UnHigHlightActor();
+		LastActor = nullptr;
+		ThisActor = nullptr;
+		return;
+	}
 	//获取光标击中的结果
 	GetHitResultUnderCursor(ECC_Visibility,false,CursorHit);
 	//如果未击中，则返回
@@ -182,6 +193,10 @@ void AAuraPlayerController::CursorTrace()
  */
 void AAuraPlayerController::AbilityInputTagPressed(FGameplayTag InputTag)
 {
+	if (GetASC() && GetASC()->HasMatchingGameplayTag(FAuraGamePlayTags::Get().Player_Block_InputPressed))
+	{
+		return;
+	}
 	// 判断输入是否为“鼠标左键”（完全匹配 LMB Tag）
 	if (InputTag.MatchesTagExact(FAuraGamePlayTags::Get().InputTag_LMB)) // LMB 按下
 	{
@@ -208,6 +223,10 @@ void AAuraPlayerController::AbilityInputTagPressed(FGameplayTag InputTag)
  */
 void AAuraPlayerController::AbilityInputTagReleased(FGameplayTag InputTag)
 {
+	if (GetASC() && GetASC()->HasMatchingGameplayTag(FAuraGamePlayTags::Get().Player_Block_InputReleased))
+	{
+		return;
+	}
 	// 若不是“鼠标左键”，只需要把“松开”事件发给 ASC，然后返回
 	if (!InputTag.MatchesTagExact(FAuraGamePlayTags::Get().InputTag_LMB)) // 非 LMB
 	{
@@ -250,8 +269,12 @@ void AAuraPlayerController::AbilityInputTagReleased(FGameplayTag InputTag)
 					bAutoRunning = true; // 启动自动奔跑
 				}
 			}
-			// 在点击位置播放一个 Niagara 效果，作为点击反馈
-			UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, ClickNiagaraSystem, CachedDestination); // 点击特效
+			if (GetASC() && !GetASC()->HasMatchingGameplayTag(FAuraGamePlayTags::Get().Player_Block_InputPressed))
+			{
+				// 在点击位置播放一个 Niagara 效果，作为点击反馈
+				UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, ClickNiagaraSystem, CachedDestination); // 点击特效
+			}
+			
 		}
 	
 		// 释放后重置“按住计时”
@@ -272,6 +295,10 @@ void AAuraPlayerController::AbilityInputTagReleased(FGameplayTag InputTag)
  */
 void AAuraPlayerController::AbilityInputTagHeld(FGameplayTag InputTag)
 {
+	if (GetASC() && GetASC()->HasMatchingGameplayTag(FAuraGamePlayTags::Get().Player_Block_InputHeld))
+	{
+		return;
+	}
 	// 非左键：只把“Held”事件交给 ASC
 	if (!InputTag.MatchesTagExact(FAuraGamePlayTags::Get().InputTag_LMB)) // 非 LMB
 	{
