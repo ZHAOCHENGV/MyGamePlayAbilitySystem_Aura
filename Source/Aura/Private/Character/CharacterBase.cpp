@@ -104,6 +104,11 @@ FOnDeath ACharacterBase::GetOnDeathDelegate()
 	return OnDeath;
 }
 
+USkeletalMeshComponent* ACharacterBase::GetWeapon_Implementation()
+{
+	return Weapon;
+}
+
 
 void ACharacterBase::MulticastHandleDeath_Implementation ()
 {

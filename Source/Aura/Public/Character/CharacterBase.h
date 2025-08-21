@@ -74,6 +74,9 @@ public:
 
 	// 死亡 注册委托
 	virtual FOnDeath GetOnDeathDelegate() override;
+
+	//获取武器
+	virtual USkeletalMeshComponent* GetWeapon_Implementation() override;
 	
 	/*Combatinterface接口结束*/
 
