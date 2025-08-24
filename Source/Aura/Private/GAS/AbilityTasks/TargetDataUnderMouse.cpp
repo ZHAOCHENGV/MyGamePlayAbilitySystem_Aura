@@ -3,7 +3,7 @@
 
 #include "GAS/AbilityTasks/TargetDataUnderMouse.h"
 #include "AbilitySystemComponent.h"
-
+#include "Aura/Aura.h"
 
 
 UTargetDataUnderMouse* UTargetDataUnderMouse::CreateTargetDataUnderMouse(UGameplayAbility* OwningAbility)
@@ -45,7 +45,7 @@ void UTargetDataUnderMouse::Activate()
 	
 
 }
-
+ 
 void UTargetDataUnderMouse::SendMouseCursorData()
 {
 	// 创建预测窗口，确保客户端和服务器同步
@@ -56,7 +56,7 @@ void UTargetDataUnderMouse::SendMouseCursorData()
 	APlayerController * PlayerController = Ability->GetCurrentActorInfo()->PlayerController.Get();
 	FHitResult CursorHit;
 	// 获取鼠标光标下的碰撞检测信息
-	PlayerController->GetHitResultUnderCursor(ECC_Visibility,false,CursorHit);
+	PlayerController->GetHitResultUnderCursor(ECC_Target,false,CursorHit);
 	// 定义目标数据句柄
 	FGameplayAbilityTargetDataHandle DataHandle;
 	// 创建单目标命中数据对象
