@@ -149,7 +149,7 @@ public:
 	UFUNCTION(BlueprintPure,Category = "AuraAbilitySystemLibrary|GameplayMechanics")
 	static TArray<FVector> EvenlyRotatedVectors(const FVector& Forward, const FVector& Axis, float Spread, int32 NumVectors);
 
-	//Aura 从 Spec Safe 获取预测密钥
+	//Aura 从 Spec Safe 获取预测密钥（从 FGameplayAbilitySpec 中“安全地”获取本次激活应使用的 PredictionKey） 
 	UFUNCTION()
 	static FPredictionKey AuraGetPredictionKeyFromSpec_Safe(const FGameplayAbilitySpec& Spec);
 
