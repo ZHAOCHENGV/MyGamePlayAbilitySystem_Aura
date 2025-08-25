@@ -698,6 +698,74 @@ FPredictionKey UAuraAbilitySystemLibrary::AuraGetPredictionKeyFromSpec_Safe(cons
 	return Spec.ActivationInfo.GetActivationPredictionKey(); // 兼容层：避免在极端情况下拿不到键
 }
 
+/**
+ * @brief 从一组 Actor 中，按与给定点 Origin 的距离“由近到远”挑出最多 MaxTargets 个目标
+ *
+ * @param MaxTargets            需要返回的最近目标上限（K）
+ * @param Actors                候选目标列表（未做去重/排序）
+ * @param OutClosestTargets     输出：距离最近的最多 K 个 Actor（不更改输入 Actors）
+ * @param Origin                计算距离的参考点（通常是释放者/鼠标命中点/技能中心点）
+ *
+ * 功能说明：
+ * - 采用“逐次选择（Selection）”法：每轮从剩余候选里找到一个最近者，加入结果并从候选中移除，重复 K 次。
+ * - 不改变原始 Actors 顺序；内部复制到临时数组，再逐步删除已选目标。
+ *
+ * 复杂度与适用性：
+ * - 时间复杂度约 O(N*K)（N 为 Actors 数量），当 K ≪ N 时比较合适；若 K 接近 N，建议一次排序 O(N log N) 或用“平方距离”+ partial sort。
+ *
+ * 注意事项（边界）：
+ * - 代码假定 Actors 中元素有效（非 nullptr），且可安全调用 GetActorLocation()；若存在 nullptr，需在循环中跳过以免崩溃（见“建议”）。
+ * - 这里用 Length() 触发 sqrt，性能一般；可改用“平方距离”比较以避免开方（见“建议”）。
+ * - 若 Actors 数量 ≤ MaxTargets，将直接把 Actors 全量拷贝到输出（不排序）。
+ */
+void UAuraAbilitySystemLibrary::GetClosestTargets(int32 MaxTargets, const TArray<AActor*>& Actors, TArray<AActor*>& OutClosestTargets, const FVector& Origin)
+{
+	// 若候选数量本就不超过上限，直接返回所有候选（不排序，保持原顺序）
+	if (Actors.Num() <= MaxTargets)
+	{
+		OutClosestTargets = Actors;    // 直接拷贝（浅拷贝指针），省去后续计算
+		return;                        // 提前返回
+	}
+
+	// 拷贝一份待检查的候选数组（避免改动传入的 Actors）
+	TArray<AActor*> ActorsToCheck = Actors; 
+	// 已选目标计数
+	int32 NumTargetsFound = 0;
+
+	// 迭代选择，直到找到 K 个或者候选耗尽
+	while (NumTargetsFound < MaxTargets)
+	{
+		// 候选用尽，提前结束（防越界）
+		if (ActorsToCheck.Num() == 0) break;
+
+		// 以“无穷大”初始化本轮的最近距离，用 double 存放
+		double ClosestDistance = TNumericLimits<double>::Max();
+		// 本轮找到的最近 Actor（注意：未显式初始化，理论上必须在循环中被赋值；见“建议”）
+		AActor* ClosestActor;
+
+		// 遍历当前所有候选，寻找与 Origin 最近的一个
+		for (AActor* PotentialTarget : ActorsToCheck)
+		{
+			// 计算欧式距离（会开方，性能相对慢；可改用平方长度比较以优化）
+			const double Distance = (PotentialTarget->GetActorLocation() - Origin).Length();
+			// 若更近，则更新“最优解”
+			if (Distance < ClosestDistance)
+			{
+				ClosestDistance = Distance;      // 记录更小的距离
+				ClosestActor = PotentialTarget;  // 记录对应的最近目标
+			}
+		}
+
+		// 从候选集中移除本轮已选中的 Actor（避免下一轮重复选中）
+		ActorsToCheck.Remove(ClosestActor);
+		// 将最近者加入输出（AddUnique 防止重复）
+		OutClosestTargets.AddUnique(ClosestActor);
+		// 已选数量 +1
+		++NumTargetsFound;
+	}
+} 
+
+
 
 /**
  * @brief 判断两个 Actor 是否“不是朋友”

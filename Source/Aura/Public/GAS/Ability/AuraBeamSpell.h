@@ -28,6 +28,11 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void TraceFirstTarget(const FVector& BeamTargetLocation);
 
+	//存储其他目标
+	UFUNCTION(BlueprintCallable)
+	void StoreAdditionalTargets(TArray<AActor*>& OutAdditionalTargets);
+
+
 protected:
 
 	//光标命中位置

@@ -149,9 +149,13 @@ public:
 	UFUNCTION(BlueprintPure,Category = "AuraAbilitySystemLibrary|GameplayMechanics")
 	static TArray<FVector> EvenlyRotatedVectors(const FVector& Forward, const FVector& Axis, float Spread, int32 NumVectors);
 
+	//Aura 从 Spec Safe 获取预测密钥
 	UFUNCTION()
 	static FPredictionKey AuraGetPredictionKeyFromSpec_Safe(const FGameplayAbilitySpec& Spec);
 
+	//获取最近的目标
+	UFUNCTION(BlueprintPure,Category = "AuraAbilitySystemLibrary|GameplayMechanics")
+	static void GetClosestTargets(int32 MaxTargets, const TArray<AActor*>& Actors, TArray<AActor*>& OutClosestTargets, const FVector& Origin);
 	
 
 };
