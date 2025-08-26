@@ -99,9 +99,9 @@ FOnASCRegistered ACharacterBase::GetOnASCRegisteredDelegate()
 	return OnAscRegistered;
 }
 
-FOnDeath ACharacterBase::GetOnDeathDelegate()
+FOnDeathSignature& ACharacterBase::GetOnDeathSignatureDelegate()
 {
-	return OnDeath;
+	return OnDeathDelegate;
 }
 
 USkeletalMeshComponent* ACharacterBase::GetWeapon_Implementation()
@@ -134,8 +134,12 @@ void ACharacterBase::MulticastHandleDeath_Implementation ()
 	Dissolve();
 	//设置死亡变量为True
 	bDead = true;
+	//销毁Buff特效
+	BurnDebuffComponent->Deactivate();
+	/*//调用死亡委托
+	OnDeath.Broadcast(this);*/
 	//调用死亡委托
-	OnDeath.Broadcast(this);
+	OnDeathDelegate.Broadcast(this);
 	
 }
 

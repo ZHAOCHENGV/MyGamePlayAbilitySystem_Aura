@@ -13,7 +13,7 @@ class UAbilitySystemComponent;
 class UNiagaraSystem;
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnASCRegistered, UAbilitySystemComponent*);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDeath, AActor*, DeadActor);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDeathSignature, AActor*, DeadActor);
 
 USTRUCT(BlueprintType)
 struct FTaggedMontage
@@ -68,7 +68,8 @@ public:
 
 	//死亡
 	virtual void Die() = 0;
-
+	
+	
 	//是否死亡
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	bool IsDead() const;
@@ -103,9 +104,9 @@ public:
 
 	//ASC组件注册时的委托
 	virtual FOnASCRegistered GetOnASCRegisteredDelegate() = 0 ;
-	
 	//死亡委托
-	virtual FOnDeath GetOnDeathDelegate() = 0;
+	virtual FOnDeathSignature& GetOnDeathSignatureDelegate() = 0;
+	
 
 	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
 	void SetInShockLoop(bool bInLoop);

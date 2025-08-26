@@ -32,6 +32,12 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void StoreAdditionalTargets(TArray<AActor*>& OutAdditionalTargets);
 
+	UFUNCTION(BlueprintImplementableEvent)
+	void PirmaryTargetDied(AActor* DeadActor);
+
+	UFUNCTION(BlueprintImplementableEvent)
+	void AdditionalTargetDied(AActor* DeadActor);
+
 
 protected:
 
@@ -51,4 +57,8 @@ protected:
 	//所有者
 	UPROPERTY(BlueprintReadWrite, Category = "Beam")
 	TObjectPtr<ACharacter> OwnerCharacter;
+
+	
+	UPROPERTY(EditDefaultsOnly, Category = "Beam")
+	int32 MaxNumShockTargets = 5;
 };

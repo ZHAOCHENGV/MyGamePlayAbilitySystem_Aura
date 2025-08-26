@@ -73,8 +73,8 @@ public:
 	virtual FOnASCRegistered GetOnASCRegisteredDelegate() override;
 
 	// 死亡 注册委托
-	virtual FOnDeath GetOnDeathDelegate() override;
-
+	virtual FOnDeathSignature& GetOnDeathSignatureDelegate() override;
+	
 	//获取武器
 	virtual USkeletalMeshComponent* GetWeapon_Implementation() override;
 	
@@ -82,7 +82,7 @@ public:
 
 	//当ASC注册时
 	FOnASCRegistered OnAscRegistered;
-	FOnDeath OnDeath;
+	FOnDeathSignature OnDeathDelegate;
 
 	//攻击蒙太奇数组
 	UPROPERTY(EditAnywhere, Category="Combat")

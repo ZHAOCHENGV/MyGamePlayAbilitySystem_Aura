@@ -99,7 +99,12 @@ FDamageEffectParams UAuraDamageGameplayAbility::MakeDamageEffectParamsFromClassD
     return Params; // 返回完整参数结构体，便于后续统一使用
 }
 
-    
+float UAuraDamageGameplayAbility::GetDamageAtLevel() const
+{
+    return Damage.GetValueAtLevel(GetAbilityLevel());
+}
+
+
 /**
  * @brief 从动画蒙太奇数组中随机获取一个带标签的动画
  *

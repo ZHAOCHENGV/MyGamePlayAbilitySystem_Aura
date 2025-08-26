@@ -24,6 +24,10 @@ public:
 	//从类默认值创建伤害效果参数
 	UFUNCTION(BlueprintPure)
 	FDamageEffectParams MakeDamageEffectParamsFromClassDefaults(AActor* TargetActor = nullptr) const;
+
+	//获取根据等级的上海数值
+	UFUNCTION(BlueprintPure)
+	float GetDamageAtLevel() const;
 protected:
 	//伤害游戏效果
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)

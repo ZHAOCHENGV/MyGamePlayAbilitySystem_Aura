@@ -48,12 +48,6 @@ void UDebuffNiagaraComponent::BeginPlay()
 			NewASC->RegisterGameplayTagEvent(DebuffTag, EGameplayTagEventType::NewOrRemoved).AddUObject(this,&UDebuffNiagaraComponent::DebuffTagChanged);;
 		});
 	}
-	// 步骤 5：如果有 CombatInterface，则订阅“死亡事件”，在死亡时关闭特效
-	if (CombatInterface)
-	{
-		// 步骤 5.1：绑定 OnDeath 到本组件的 OnOwnerDeath（动态绑定，便于蓝图/反射）
-		CombatInterface->GetOnDeathDelegate().AddDynamic(this, &UDebuffNiagaraComponent::OnOwnerDeath);
-	}
 }
 /**
  * @brief Debuff Tag 计数变化时的回调：大于 0 激活特效；等于 0 关闭特效
