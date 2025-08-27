@@ -49,6 +49,8 @@ public:
 	//升级特效
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	TObjectPtr<UNiagaraComponent> LevelUpNiagaraComponent;
+
+	virtual void OnRep_Stunned() override;
 private:
 	//设置拥有者Owner Actor和Avater actor 
 	virtual void InitAbilityActorInfo() override;

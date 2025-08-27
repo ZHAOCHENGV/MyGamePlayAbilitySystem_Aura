@@ -50,7 +50,7 @@ void UAuraDamageGameplayAbility::CauseDamage(AActor* TargetActor)
 }
 
 /**
- * @brief 从当前技能默认配置生成伤害效果参数结构体
+ * @brief 从当前技能默认配置生成减益 伤害效果参数结构体
  *
  * @param TargetActor 伤害技能的目标Actor（通常是敌人或玩家）
  * @return FDamageEffectParams 结构体，包含所有后续执行伤害GE所需的参数

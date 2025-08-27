@@ -9,8 +9,10 @@
 #include "Aura/Aura.h"
 #include "Components/CapsuleComponent.h"
 #include "Debuff/DebuffNiagaraComponent.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "GAS/AuraAbilitySystemComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "Net/UnrealNetwork.h"
 
 
 ACharacterBase::ACharacterBase()
@@ -29,7 +31,8 @@ ACharacterBase::ACharacterBase()
 	GetMesh()->SetCollisionResponseToChannel(ECC_Camera,ECR_Ignore);
 	GetMesh()->SetCollisionResponseToChannel(ECC_Projectile,ECR_Overlap);
 	GetMesh()->SetGenerateOverlapEvents(true);
-	
+	//设置移动速度
+	GetCharacterMovement()->MaxWalkSpeed = BaseWalkSpeed;
 	
 
 }
@@ -148,6 +151,47 @@ TArray<FTaggedMontage> ACharacterBase::GetAttackMontages_Implementation()
 	return AttackMontages;
 }
 
+void ACharacterBase::StunTagChanged(const FGameplayTag CallbackTag, int32 NewCount)
+{
+	bIsStunned = NewCount > 0;
+	GetCharacterMovement()->MaxWalkSpeed = bIsStunned ? 0.f : BaseWalkSpeed;
+}
+
+
+void ACharacterBase::OnRep_Stunned()
+{
+	
+}
+
+/**
+ * @brief 注册本类需要参与网络复制的属性（如眩晕状态 bIsStunned）
+ *
+ * @param OutLifetimeProps 引擎用于收集复制规则的数组（向其中添加本类的复制条目）
+ *
+ * 功能说明：
+ * - UE 会在初始化时调用该函数，子类在此将需要复制的 UPROPERTY 注册给引擎。
+ * - 未在此处注册的属性，即使标了 UPROPERTY(Replicated)，也不会真正复制。
+ *
+ * 详细流程：
+ * 1) 先调用父类版本，确保父类已注册的复制属性不丢失；
+ * 2) 使用 DOREPLIFETIME/DOREPLIFETIME_CONDITION 将本类属性追加到 OutLifetimeProps；
+ * 3) 引擎据此在运行时完成属性的网络同步。
+ *
+ * 注意事项：
+ * - 函数签名必须与 AActor 声明一致：参数类型与顺序、末尾 **const** 都不能改；
+ * - 对应的属性必须是 UPROPERTY(Replicated) 或 ReplicatedUsing=OnRep_XXX；
+ * - Actor 自身需启用复制（构造函数中 bReplicates = true）。
+ */
+void ACharacterBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	// 步骤 1：调用父类实现，保留父类的复制设置
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps); // 父类中已注册的属性继续生效
+
+	// 步骤 2：注册本类需要复制的属性
+	DOREPLIFETIME(ACharacterBase, bIsStunned);          // 将 bIsStunned 加入复制列表（默认条件：始终复制）
+	// 如需条件复制，可用：
+	// DOREPLIFETIME_CONDITION(ACharacterBase, bIsStunned, COND_SkipOwner);
+}
 void ACharacterBase::BeginPlay()
 {
 	Super::BeginPlay();

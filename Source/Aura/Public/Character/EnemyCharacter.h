@@ -48,9 +48,7 @@ public:
 	//是否击中
 	UPROPERTY(BlueprintReadOnly, Category = "Combat")
 	bool bHitReacting = false;
-	//移动速度
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Combat")
-	float BaseWalkSpeed = 250.f;
+
 	//声明周期
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Combat")
 	float LifeSpan = 5.f;
@@ -82,5 +80,7 @@ protected:
 	//敌人AI控制器
 	UPROPERTY()
 	TObjectPtr<AEnemyAIController> EnemyAIController;
+
+	virtual void StunTagChanged(const FGameplayTag CallbackTag, int32 NewCount) override;
 	
 };

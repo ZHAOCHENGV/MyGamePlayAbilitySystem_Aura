@@ -4,6 +4,7 @@
 #include "Character/AuraCharacter.h"
 
 #include "AbilitySystemComponent.h"
+#include "AuraGamePlayTags.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GAS/AuraAbilitySystemComponent.h"
 #include "GAS/Data/LevelUpInfo.h"
@@ -38,6 +39,7 @@ AAuraCharacter::AAuraCharacter()
 	GetCharacterMovement()->bConstrainToPlane = true;
 	//在开始时对齐平面
 	GetCharacterMovement()->bSnapToPlaneAtStart = true;
+
 	
 	//使用控制器旋转Pitch关闭
 	bUseControllerRotationPitch = false;
@@ -223,6 +225,27 @@ int32 AAuraCharacter::GetPlayerLevel_Implementation()
 }
 
 
+void AAuraCharacter::OnRep_Stunned()
+{
+	if (UAuraAbilitySystemComponent* AuraASC = Cast<UAuraAbilitySystemComponent>(AbilitySystemComponent))
+	{
+		const FAuraGamePlayTags& GamePlayTags = FAuraGamePlayTags::Get();
+		FGameplayTagContainer BlockedTag;
+		BlockedTag.AddTag(GamePlayTags.Player_Block_CursorTrace);
+		BlockedTag.AddTag(GamePlayTags.Player_Block_InputHeld);
+		BlockedTag.AddTag(GamePlayTags.Player_Block_InputPressed);
+		BlockedTag.AddTag(GamePlayTags.Player_Block_InputReleased);
+		if (bIsStunned)
+		{
+			AuraASC->AddLooseGameplayTags(BlockedTag);
+		}
+		else
+		{
+			AuraASC->RemoveLooseGameplayTags(BlockedTag);
+		}
+	}
+}
+
 void AAuraCharacter::InitAbilityActorInfo()
 {
 	//获取玩家状态
@@ -237,6 +260,10 @@ void AAuraCharacter::InitAbilityActorInfo()
 	AbilitySystemComponent = AuraPlayerState->GetAbilitySystemComponent();
 	AttributeSet = AuraPlayerState->GetAttributeSet();
 	OnAscRegistered.Broadcast(AbilitySystemComponent);
+	//为眩晕标签注册眩晕事件
+	AbilitySystemComponent->RegisterGameplayTagEvent(FAuraGamePlayTags::Get().Debuff_Stun, EGameplayTagEventType::NewOrRemoved).AddUObject(this, &AAuraCharacter::StunTagChanged);
+
+	
 	//获取控制器是否有效
 	if (AAuraPlayerController * AuraPlayerController = Cast<AAuraPlayerController>(GetController()))
 	{

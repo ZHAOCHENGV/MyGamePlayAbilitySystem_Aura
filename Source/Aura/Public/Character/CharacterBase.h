@@ -27,6 +27,7 @@ class AURA_API ACharacterBase : public ACharacter,public IAbilitySystemInterface
 	GENERATED_BODY()
 
 public:
+	
 	//构造函数
 	ACharacterBase();
 	//重写IAbilitySystemInterface接口中的 事件
@@ -88,7 +89,21 @@ public:
 	UPROPERTY(EditAnywhere, Category="Combat")
 	TArray<FTaggedMontage> AttackMontages;
 
+	//获取攻击蒙太奇
 	virtual TArray<FTaggedMontage> GetAttackMontages_Implementation() override;
+
+	//是否眩晕
+	UPROPERTY(ReplicatedUsing=OnRep_Stunned, BlueprintReadOnly)
+	bool bIsStunned = false;
+
+	UFUNCTION()
+	//具有复制功能的晕眩
+	virtual void OnRep_Stunned();
+	
+	
+	//获取生命周期复制的 props (bIsStunned)
+	//注意：如有变量为Replicated，则必须GetLifetimeReplicatedProps
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const ;
 	
 protected:
 	//游戏开始
@@ -185,6 +200,14 @@ protected:
 	//燃烧减益组件
 	UPROPERTY(VisibleAnywhere)
 	TObjectPtr<UDebuffNiagaraComponent> BurnDebuffComponent;
+
+	//移动速度
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Combat")
+	float BaseWalkSpeed = 600.f;
+
+	//当眩晕标签已更改时
+	virtual void StunTagChanged(const FGameplayTag CallbackTag, int32 NewCount);
+	
 	
 private:
 	//启动技能数组

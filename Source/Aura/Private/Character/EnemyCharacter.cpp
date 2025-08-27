@@ -36,7 +36,7 @@ void AEnemyCharacter::PossessedBy(AController* NewController)
 	bUseControllerRotationYaw = false;
 	GetCharacterMovement()->bUseControllerDesiredRotation = true;
 	GetCharacterMovement()->bOrientRotationToMovement = true;
-	
+
 }
 
 AEnemyCharacter::AEnemyCharacter()
@@ -55,8 +55,7 @@ AEnemyCharacter::AEnemyCharacter()
 	HealthBar = CreateDefaultSubobject<UWidgetComponent>("HealthBar");
 	HealthBar->SetupAttachment(GetRootComponent());
 
-	//设置移动速度
-	GetCharacterMovement()->MaxWalkSpeed = BaseWalkSpeed;
+	
 	
 }
 
@@ -182,6 +181,8 @@ void AEnemyCharacter::InitAbilityActorInfo()
 	AbilitySystemComponent->InitAbilityActorInfo(this,this);
 	//获取类型为UAuraAbilitySystemComponent技能组件，并且初始化技能属性集
 	Cast<UAuraAbilitySystemComponent>(AbilitySystemComponent)->AbilityActorInfoSet();
+	//为眩晕标签注册眩晕事件
+	AbilitySystemComponent->RegisterGameplayTagEvent(FAuraGamePlayTags::Get().Debuff_Stun, EGameplayTagEventType::NewOrRemoved).AddUObject(this, &AEnemyCharacter::StunTagChanged);
 
 	if (HasAuthority())
 	{
@@ -195,6 +196,15 @@ void AEnemyCharacter::InitializeDefaultAttributes() const
 {
 	//传入，职业和等级，能力组件，初始化默认属性
 	UAuraAbilitySystemLibrary::InitializeDefaultAttribute(this,CharacterClass,Level,AbilitySystemComponent);
+}
+
+void AEnemyCharacter::StunTagChanged(const FGameplayTag CallbackTag, int32 NewCount)
+{
+	Super::StunTagChanged(CallbackTag, NewCount);
+	if (EnemyAIController && EnemyAIController->GetBlackboardComponent())
+	{
+		EnemyAIController->GetBlackboardComponent()->SetValueAsBool(FName("Stunned"), bIsStunned);
+	}
 }
 
 

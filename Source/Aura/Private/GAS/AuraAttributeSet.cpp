@@ -356,9 +356,21 @@ void UAuraAttributeSet::Debuff(const FEffectProperties& Props)
 	// 找到或添加 UTargetTagsGameplayEffectComponent（用来操作目标的 Tag 变化）
 	UTargetTagsGameplayEffectComponent& Component = Effect->FindOrAddComponent<UTargetTagsGameplayEffectComponent>();
 
-	// 将“伤害类型 → Debuff 标签”的映射结果加入容器
-	TagContainer.Added.AddTag(GamePlayTags.DamageTypesToDebuffs[DamageType]);
 
+	const FGameplayTag DebuffTag = GamePlayTags.DamageTypesToDebuffs[DamageType];
+	// 将“伤害类型 → Debuff 标签”的映射结果加入容器
+	TagContainer.Added.AddTag(DebuffTag);
+	// 如果Debuff标签为 晕眩 时
+	if (DebuffTag.MatchesTagExact(GamePlayTags.Debuff_Stun))
+	{
+		//将“ 阻止光标追踪，移动，输入已按下，输入已松开等 Debuff 标签”的映射结果加入容器，阻止这些效果 
+		TagContainer.Added.AddTag(GamePlayTags.Player_Block_CursorTrace);
+		TagContainer.Added.AddTag(GamePlayTags.Player_Block_InputHeld);
+		TagContainer.Added.AddTag(GamePlayTags.Player_Block_InputPressed);
+		TagContainer.Added.AddTag(GamePlayTags.Player_Block_InputReleased);
+	}
+	
+	
 	// 应用到目标标签（使目标获得对应的 Debuff Tag）
 	Component.SetAndApplyTargetTagChanges(TagContainer);
 

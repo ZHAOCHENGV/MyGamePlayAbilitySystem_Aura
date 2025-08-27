@@ -41,31 +41,31 @@ protected:
 	FScalableFloat	Damage;
 
 	//减益几率
-	UPROPERTY(EditDefaultsOnly,  Category = "Damage")
+	UPROPERTY(EditDefaultsOnly,  Category = "Damage", meta=(DisplayName="Debuff几率"))
 	float DebuffChance = 20.f;
 
 	//减益效果伤害值
-	UPROPERTY(EditDefaultsOnly,  Category = "Damage")
+	UPROPERTY(EditDefaultsOnly,  Category = "Damage", meta=(DisplayName="Debuff伤害"))
 	float DebuffDamage = 5.f;
 
 	//减益效果频率
-	UPROPERTY(EditDefaultsOnly,  Category = "Damage")
+	UPROPERTY(EditDefaultsOnly,  Category = "Damage", meta=(DisplayName="Debuff频率"))
 	float DebuffFrequency = 1.f;
 
 	//减益效果持续时间
-	UPROPERTY(EditDefaultsOnly,  Category = "Damage")
+	UPROPERTY(EditDefaultsOnly,  Category = "Damage", meta=(DisplayName="Debuff持续时间"))
 	float DebuffDuration = 5.f;
 
 	//死亡冲量强度
-	UPROPERTY(EditDefaultsOnly,  Category = "Damage")
+	UPROPERTY(EditDefaultsOnly,  Category = "Damage", meta=(DisplayName="死亡冲量强度"))
 	float DeathImpulseMagnitude = 1000.f;
 
 	//击退强度
-	UPROPERTY(EditDefaultsOnly,  Category = "Damage")
+	UPROPERTY(EditDefaultsOnly,  Category = "Damage", meta=(DisplayName="技能击退强度"))
 	float KnockBackForceMagnitude = 1000.f;
 
 	//击退几率
-	UPROPERTY(EditDefaultsOnly,  Category = "Damage")
+	UPROPERTY(EditDefaultsOnly,  Category = "Damage", meta=(DisplayName="技能击退几率"))
 	float KnockBackChance = 0.f;
 
 	
