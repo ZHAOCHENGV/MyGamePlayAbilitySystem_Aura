@@ -103,14 +103,22 @@ public:
 	ECharacterClass GetCharacterClass();
 
 	//ASC组件注册时的委托
-	virtual FOnASCRegistered GetOnASCRegisteredDelegate() = 0 ;
+	virtual FOnASCRegistered& GetOnASCRegisteredDelegate() = 0 ;
 	//死亡委托
 	virtual FOnDeathSignature& GetOnDeathSignatureDelegate() = 0;
 	
-
+	//设置在晕眩状态中
 	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
 	void SetInShockLoop(bool bInLoop);
 
+	//获取是否正在晕眩中
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	bool IsBeingShocked() const;
+
+	//设置晕眩动画中
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void SetIsBeingShocked(bool bInShock);
+	
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	USkeletalMeshComponent* GetWeapon();
 };

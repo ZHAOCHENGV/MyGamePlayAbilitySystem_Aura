@@ -14,7 +14,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
 
-
+ 
 ACharacterBase::ACharacterBase()
 {
  	PrimaryActorTick.bCanEverTick = false;
@@ -22,6 +22,11 @@ ACharacterBase::ACharacterBase()
 	BurnDebuffComponent = CreateDefaultSubobject<UDebuffNiagaraComponent>(TEXT("BurnDebuffComponent"));
 	BurnDebuffComponent->SetupAttachment(GetRootComponent());
 	BurnDebuffComponent->DebuffTag = FAuraGamePlayTags::Get().Debuff_Burn;
+
+	StunDebuffComponent = CreateDefaultSubobject<UDebuffNiagaraComponent>(TEXT("StunDebuffComponent"));
+	StunDebuffComponent->SetupAttachment(GetRootComponent());
+	StunDebuffComponent->DebuffTag = FAuraGamePlayTags::Get().Debuff_Stun;
+
 	
 	Weapon = CreateDefaultSubobject<USkeletalMeshComponent>("Weapon");
 	Weapon->SetupAttachment(GetMesh(),("WeaponHandSocket"));
@@ -97,7 +102,7 @@ ECharacterClass ACharacterBase::GetCharacterClass_Implementation()
 	return CharacterClass;
 }
 
-FOnASCRegistered ACharacterBase::GetOnASCRegisteredDelegate()
+FOnASCRegistered& ACharacterBase::GetOnASCRegisteredDelegate()
 {
 	return OnAscRegistered;
 }
@@ -110,6 +115,16 @@ FOnDeathSignature& ACharacterBase::GetOnDeathSignatureDelegate()
 USkeletalMeshComponent* ACharacterBase::GetWeapon_Implementation()
 {
 	return Weapon;
+}
+
+void ACharacterBase::SetIsBeingShocked_Implementation(bool bInShock)
+{
+	bIsBeingShocked = bInShock;
+}
+
+bool ACharacterBase::IsBeingShocked_Implementation() const
+{
+	return bIsBeingShocked;
 }
 
 
@@ -139,6 +154,7 @@ void ACharacterBase::MulticastHandleDeath_Implementation ()
 	bDead = true;
 	//销毁Buff特效
 	BurnDebuffComponent->Deactivate();
+	StunDebuffComponent->Deactivate();
 	/*//调用死亡委托
 	OnDeath.Broadcast(this);*/
 	//调用死亡委托
@@ -161,6 +177,10 @@ void ACharacterBase::StunTagChanged(const FGameplayTag CallbackTag, int32 NewCou
 void ACharacterBase::OnRep_Stunned()
 {
 	
+}
+
+void ACharacterBase::OnRep_Burned()
+{
 }
 
 /**
@@ -189,6 +209,8 @@ void ACharacterBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 
 	// 步骤 2：注册本类需要复制的属性
 	DOREPLIFETIME(ACharacterBase, bIsStunned);          // 将 bIsStunned 加入复制列表（默认条件：始终复制）
+	DOREPLIFETIME(ACharacterBase, bIsBurned);           // 将 bIsBurned 加入复制列表（默认条件：始终复制）
+	DOREPLIFETIME(ACharacterBase, bIsBeingShocked);		// 将 bIsBeingShocked 加入复制列表（默认条件：始终复制）
 	// 如需条件复制，可用：
 	// DOREPLIFETIME_CONDITION(ACharacterBase, bIsStunned, COND_SkipOwner);
 }

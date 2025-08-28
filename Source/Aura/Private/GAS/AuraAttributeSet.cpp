@@ -213,10 +213,15 @@ void UAuraAttributeSet::HandleIncomingDamage(const FEffectProperties& Props)
 		}
 		else
 		{
-			// 步骤 3.4：未致死 → 触发“受击反应”GA（命中反应）
-			FGameplayTagContainer TagContainer; // 标签容器
-			TagContainer.AddTag(FAuraGamePlayTags::Get().Effects_HitReact); // 添加受击标签
-			Props.TargetASC->TryActivateAbilitiesByTag(TagContainer); // 尝试激活对应 GA
+			//如果未在眩暈中
+			if (Props.TargetCharacter->Implements<UCombatInterface>() && !ICombatInterface::Execute_IsBeingShocked(Props.TargetCharacter))
+			{
+				// 步骤 3.4：未致死 → 触发“受击反应”GA（命中反应）
+				FGameplayTagContainer TagContainer; // 标签容器
+				TagContainer.AddTag(FAuraGamePlayTags::Get().Effects_HitReact); // 添加受击标签
+				Props.TargetASC->TryActivateAbilitiesByTag(TagContainer); // 尝试激活对应 GA
+			}
+			
 
 			// 步骤 3.5：从 Context 读取击退向量；非零则 LaunchCharacter
 			const FVector& KnockBackForce = UAuraAbilitySystemLibrary::GetKnockBackForce(Props.EffectContextHandle); // 击退力

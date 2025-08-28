@@ -13,6 +13,7 @@
 #include "UI/HUD/AuraHUD.h"
 #include "NiagaraComponent.h"
 #include "Camera/CameraComponent.h"
+#include "Debuff/DebuffNiagaraComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 
 AAuraCharacter::AAuraCharacter()
@@ -225,60 +226,132 @@ int32 AAuraCharacter::GetPlayerLevel_Implementation()
 }
 
 
+/**
+ * @brief 眩晕标志（bIsStunned）在客户端被复制更新时的回调：添加/移除输入阻断类 Tag，并切换眩晕特效组件
+ *
+ * @details
+ * 功能说明：
+ * - 依赖 UPROPERTY(ReplicatedUsing=OnRep_Stunned) 的复制机制；当 bIsStunned 在服务端改变后，客户端会调用本函数。
+ * - 眩晕时向 ASC 添加一组“阻断”LooseGameplayTags；解除时移除这些 Tag。同时激活/停用眩晕特效组件。
+ *
+ * 详细流程：
+ * 1) 取得本角色的 ASC（强转为 UAuraAbilitySystemComponent 以使用自定义接口）；
+ * 2) 组装一套用于阻断输入/点击检测的标签容器；
+ * 3) 若 bIsStunned 为真 → AddLooseGameplayTags + 激活特效；否则 → RemoveLooseGameplayTags + 停用特效。
+ *
+ * 注意事项：
+ * - 确保 bIsStunned 声明为 UPROPERTY(ReplicatedUsing=OnRep_Stunned)，且角色 bReplicates=true；
+ * - Add/Remove 的 Tag 集合要和游戏逻辑保持对称，否则会出现“残留阻断”的问题；
+ * - StunDebuffComponent 需在构造或 BeginPlay 中创建并保持有效（UPROPERTY() 持有），避免 GC。
+ */
 void AAuraCharacter::OnRep_Stunned()
 {
+	// 1) 从 AbilitySystemComponent 强转为自定义 ASC 类型，便于调用扩展 API
 	if (UAuraAbilitySystemComponent* AuraASC = Cast<UAuraAbilitySystemComponent>(AbilitySystemComponent))
 	{
+		// 2) 取全局 GameplayTags 单例（集中管理的标签集合）
 		const FAuraGamePlayTags& GamePlayTags = FAuraGamePlayTags::Get();
+
+		// 3) 组装“阻断输入/检测”的标签容器（一次性批量添加/移除）
 		FGameplayTagContainer BlockedTag;
-		BlockedTag.AddTag(GamePlayTags.Player_Block_CursorTrace);
-		BlockedTag.AddTag(GamePlayTags.Player_Block_InputHeld);
-		BlockedTag.AddTag(GamePlayTags.Player_Block_InputPressed);
-		BlockedTag.AddTag(GamePlayTags.Player_Block_InputReleased);
+		BlockedTag.AddTag(GamePlayTags.Player_Block_CursorTrace);   // 阻止光标射线检测
+		BlockedTag.AddTag(GamePlayTags.Player_Block_InputHeld);     // 阻止“按住”输入
+		BlockedTag.AddTag(GamePlayTags.Player_Block_InputPressed);  // 阻止“按下”输入
+		BlockedTag.AddTag(GamePlayTags.Player_Block_InputReleased); // 阻止“松开”输入
+
+		// 4) 根据眩晕状态切换
 		if (bIsStunned)
 		{
-			AuraASC->AddLooseGameplayTags(BlockedTag);
+			AuraASC->AddLooseGameplayTags(BlockedTag); // 加阻断标签（Loose：不走GE生命周期）
+			StunDebuffComponent->Activate();           // 激活眩晕特效（如 Niagara/音效）
 		}
 		else
 		{
-			AuraASC->RemoveLooseGameplayTags(BlockedTag);
+			AuraASC->RemoveLooseGameplayTags(BlockedTag); // 移除阻断标签
+			StunDebuffComponent->Deactivate();            // 停用眩晕特效
 		}
 	}
 }
 
+/**
+ * @brief 灼烧标志（bIsBurned）在客户端被复制更新时的回调：切换灼烧特效组件
+ *
+ * @details
+ * 功能说明：
+ * - 依赖 UPROPERTY(ReplicatedUsing=OnRep_Burned) 的复制机制；当 bIsBurned 在服务端改变后，客户端会调用本函数。
+ * - 根据当前状态激活/停用对应的 Debuff 视觉/音效组件。
+ *
+ * 注意事项：
+ * - BurnDebuffComponent 需为 UPROPERTY() 成员并在初始化时创建，避免空指针/被 GC。
+ */
+void AAuraCharacter::OnRep_Burned()
+{
+	// 若处于灼烧状态 → 激活特效；否则关闭
+	if (bIsBurned)
+	{
+		BurnDebuffComponent->Activate();
+	}
+	else
+	{
+		BurnDebuffComponent->Deactivate();
+	}
+}
+
+/**
+ * @brief 初始化该角色的 Ability Actor Info，并绑定 HUD/标签事件，应用默认属性
+ *
+ * @details
+ * 功能说明：
+ * - 在“玩家状态拥有 ASC、角色作为 Avatar”的架构下：
+ *   1) 从 PlayerState 取 ASC 并调用 InitAbilityActorInfo(Owner=PlayerState, Avatar=this)；
+ *   2) 初始化 Aura 自定义 ASC 的扩展信息（AbilityActorInfoSet）；
+ *   3) 将本角色缓存的 AbilitySystemComponent/AttributeSet 指向 PlayerState 持有的对象；
+ *   4) 广播 ASC 已注册（供 UI 或其他系统监听）；
+ *   5) 注册眩晕标签的新增/移除事件回调；
+ *   6) 若是本地玩家，初始化 HUD Overlay（传入 PC/PS/ASC/AS）；
+ *   7) 应用默认属性（初始 GE）。
+ *
+ * 注意事项：
+ * - 该函数通常在 Pawn/Character 的 Possessed 或 BeginPlay 阶段调用（确保 PlayerState/Controller 均已有效）；
+ * - 如果是 AI/非玩家角色，PlayerState 可能不同（或没有 HUD），分支判断要健壮；
+ * - InitializeDefaultAttributes 内部应确保只在服务器应用一次（属性复制给客户端）。
+ */
 void AAuraCharacter::InitAbilityActorInfo()
 {
-	//获取玩家状态
-	AAuraPlayerState * AuraPlayerState =  GetPlayerState<AAuraPlayerState>();
-	//检查玩家状态
-	check(AuraPlayerState);
-	//获取玩家状态中的ASC组件，并且设置ASC组件的拥有者是玩家状态和代理者是此actor
-	AuraPlayerState->GetAbilitySystemComponent()->InitAbilityActorInfo(AuraPlayerState,this);
-	//获取类型为UAuraAbilitySystemComponent技能组件，并且初始化技能属性集
+	// 1) 获取并校验 PlayerState（多人架构中 ASC 常挂在 PS 上）
+	AAuraPlayerState* AuraPlayerState = GetPlayerState<AAuraPlayerState>(); // 取得玩家状态
+	check(AuraPlayerState);                                                 // 若无 PS，直接断言（开发期暴露问题）
+
+	// 2) 使用 PS 上的 ASC：设置 Owner=PS，Avatar=this（GAS 标准二元绑定）
+	AuraPlayerState->GetAbilitySystemComponent()->InitAbilityActorInfo(AuraPlayerState, this);
+
+	// 3) Aura 自定义 ASC 的扩展初始化（可在此缓存指针、绑定事件等）
 	Cast<UAuraAbilitySystemComponent>(AuraPlayerState->GetAbilitySystemComponent())->AbilityActorInfoSet();
-	//初始化自身的AbilitySystemComponent和AttributeSet
+
+	// 4) 本角色缓存 ASC / AttributeSet，统一从 PS 获取（保持与 GAS 绑定一致）
 	AbilitySystemComponent = AuraPlayerState->GetAbilitySystemComponent();
 	AttributeSet = AuraPlayerState->GetAttributeSet();
-	OnAscRegistered.Broadcast(AbilitySystemComponent);
-	//为眩晕标签注册眩晕事件
-	AbilitySystemComponent->RegisterGameplayTagEvent(FAuraGamePlayTags::Get().Debuff_Stun, EGameplayTagEventType::NewOrRemoved).AddUObject(this, &AAuraCharacter::StunTagChanged);
 
-	
-	//获取控制器是否有效
-	if (AAuraPlayerController * AuraPlayerController = Cast<AAuraPlayerController>(GetController()))
+	// 5) 广播“ASC 已注册”（WidgetController/组件可监听此事件完成自身初始化）
+	OnAscRegistered.Broadcast(AbilitySystemComponent);
+
+	// 6) 注册“眩晕 Debuff 标签”的新增/移除事件（客户端也能收到，以在本地响应 UI/表现）
+	AbilitySystemComponent->RegisterGameplayTagEvent(
+		FAuraGamePlayTags::Get().Debuff_Stun, 
+		EGameplayTagEventType::NewOrRemoved
+	).AddUObject(this, &AAuraCharacter::StunTagChanged);
+
+	// 7) 若控制器为玩家控制器，则初始化 HUD Overlay（绑定 PC/PS/ASC/AS）
+	if (AAuraPlayerController* AuraPlayerController = Cast<AAuraPlayerController>(GetController()))
 	{
-		//获取HUD是否有效
-		if (AAuraHUD * AuraHUD = Cast<AAuraHUD>(AuraPlayerController->GetHUD()))
+		if (AAuraHUD* AuraHUD = Cast<AAuraHUD>(AuraPlayerController->GetHUD()))
 		{
-			//有效则初始化重叠HUD
-			AuraHUD->InitOverlay(AuraPlayerController,AuraPlayerState,AbilitySystemComponent,AttributeSet);
+			AuraHUD->InitOverlay(AuraPlayerController, AuraPlayerState, AbilitySystemComponent, AttributeSet);
 		}
 	}
-	//应用游戏效果，来初始化默认属性
+
+	// 8) 应用初始属性（一般在服务器执行一次，依赖 GE 复制到客户端）
 	InitializeDefaultAttributes();
-
-	
 }
-
 
 

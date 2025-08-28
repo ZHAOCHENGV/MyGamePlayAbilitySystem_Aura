@@ -71,13 +71,16 @@ public:
 	virtual ECharacterClass GetCharacterClass_Implementation() override;
 
 	// ASC 注册委托
-	virtual FOnASCRegistered GetOnASCRegisteredDelegate() override;
+	virtual FOnASCRegistered& GetOnASCRegisteredDelegate() override;
 
 	// 死亡 注册委托
 	virtual FOnDeathSignature& GetOnDeathSignatureDelegate() override;
 	
 	//获取武器
 	virtual USkeletalMeshComponent* GetWeapon_Implementation() override;
+
+	virtual void SetIsBeingShocked_Implementation(bool bInShock) override;
+	virtual bool IsBeingShocked_Implementation() const override;
 	
 	/*Combatinterface接口结束*/
 
@@ -96,10 +99,20 @@ public:
 	UPROPERTY(ReplicatedUsing=OnRep_Stunned, BlueprintReadOnly)
 	bool bIsStunned = false;
 
-	UFUNCTION()
-	//具有复制功能的晕眩
-	virtual void OnRep_Stunned();
+	//是否燃烧
+	UPROPERTY(ReplicatedUsing=OnRep_Burned, BlueprintReadOnly)
+	bool bIsBurned = false;
+
+	//眩晕中
+	UPROPERTY(Replicated, BlueprintReadOnly)
+	bool bIsBeingShocked = false;
 	
+	//具有复制功能的晕眩
+	UFUNCTION()
+	virtual void OnRep_Stunned();
+	//具有复制功能的燃烧
+	UFUNCTION()
+	virtual void OnRep_Burned();
 	
 	//获取生命周期复制的 props (bIsStunned)
 	//注意：如有变量为Replicated，则必须GetLifetimeReplicatedProps
@@ -200,6 +213,10 @@ protected:
 	//燃烧减益组件
 	UPROPERTY(VisibleAnywhere)
 	TObjectPtr<UDebuffNiagaraComponent> BurnDebuffComponent;
+
+	//眩晕减益组件
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<UDebuffNiagaraComponent> StunDebuffComponent;
 
 	//移动速度
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Combat")

@@ -51,6 +51,7 @@ public:
 	TObjectPtr<UNiagaraComponent> LevelUpNiagaraComponent;
 
 	virtual void OnRep_Stunned() override;
+	virtual void OnRep_Burned() override;
 private:
 	//设置拥有者Owner Actor和Avater actor 
 	virtual void InitAbilityActorInfo() override;
