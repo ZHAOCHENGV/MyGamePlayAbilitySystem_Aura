@@ -243,52 +243,88 @@ void UAuraAttributeSet::HandleIncomingDamage(const FEffectProperties& Props)
 		}
 	}
 }
+
+/**
+ * @brief 处理传入的经验值（IncomingXP），并根据总经验计算是否升级、奖励点数与回满标记
+ *
+ * @param Props 来自效果回调的上下文（来源/目标角色、ASC 等），用于确定“谁获得经验”等
+ *
+ * 功能说明：
+ * - 把本次累积到属性上的 IncomingXP 读出并清零；
+ * - 若来源角色实现了 Player/Combat 接口，则根据「当前经验 + 本次经验」计算应达到的新等级；
+ * - 若发生“跨级”，按每级的奖励规则累计 AttributePoints/SpellPoints，并给来源角色发放；
+ * - 设置回满生命/法力的标记（在 PostAttributeChange 中执行回满），并触发升级事件；
+ * - 最后把本次经验计入来源角色的总经验（AddToXP）。
+ *
+ * 详细流程：
+ * 1) 读取并清零 IncomingXP；2) 打日志便于调试；3) 验证来源角色实现接口；
+ * 4) 读取当前等级/经验；5) 计算新等级与“升级次数”；
+ * 6) 若升级次数>0：先加等级，再按每级累计奖励点，设置回满标记并触发升级事件；
+ * 7) 累加总经验（无论是否升级）。
+ *
+ * 注意事项：
+ * - 该处理应在 **服务器** 执行，属性复制到客户端（避免客户端私自加经验）； 
+ * - FindLevelForXP 需支持“跨多级”的输入；如果一次获得大量经验，循环发奖的逻辑要正确；
+ * - bTopOffHealth/bTopOffMana 只是标记，真正回满在 PostAttributeChange 中实现；
+ * - 接口方法名/拼写要与实现一致（如 LeveUp/LevelUp）。
+ */
 void UAuraAttributeSet::HandleIncomingXP(const FEffectProperties& Props)
 {
+	// 步骤 1：把这次累积到属性上的 IncomingXP 读出来
+	const float LocalIncomingXP = GetIncomingXP();                 // 本次要结算的 XP
 
-	const float LocalIncomingXP = GetIncomingXP();
+	// 步骤 2：立刻把 IncomingXP 清零，避免重复结算
+	SetIncomingXP(0.f);                                            // 清空以防多次累加
 
-	SetIncomingXP(0.f);
+	// 步骤 3：输出调试日志，便于观测经验流向与数值
+	UE_LOG(LogAura, Log, TEXT(" Incoming XP : %f"), LocalIncomingXP ); // 打印本次经验
 
-	UE_LOG(LogAura,Log,TEXT(" Incoming XP : %f"),LocalIncomingXP );
-
-		
-
+	// 步骤 4：验证来源角色是否实现了玩家/战斗接口（从 Source 角度获得 XP）
 	if (Props.SourceCharacter->Implements<UPlayerInterface>() && Props.SourceCharacter->Implements<UCombatInterface>())
 	{
-	
-		const int32 CurrentLevel = ICombatInterface::Execute_GetPlayerLevel(Props.SourceCharacter);
-	
-		const int32 CurrentXP = IPlayerInterface::Execute_GetXP(Props.SourceCharacter);
-		
-		const int32 NewLevel = IPlayerInterface::Execute_FindLevelForXP(Props.SourceCharacter, CurrentXP + LocalIncomingXP);
-	
-		const int32 NumLevelUps = NewLevel - CurrentLevel;
-	
+		// 步骤 5：读取当前等级
+		const int32 CurrentLevel = ICombatInterface::Execute_GetPlayerLevel(Props.SourceCharacter);     // 当前等级
+
+		// 步骤 6：读取当前总经验
+		const int32 CurrentXP = IPlayerInterface::Execute_GetXP(Props.SourceCharacter);                  // 当前经验
+
+		// 步骤 7：用（当前经验 + 本次经验）计算应达到的新等级（可跨多级）
+		const int32 NewLevel = IPlayerInterface::Execute_FindLevelForXP(Props.SourceCharacter, CurrentXP + LocalIncomingXP); // 目标等级
+
+		// 步骤 8：计算本次实际提升的“级数”
+		const int32 NumLevelUps = NewLevel - CurrentLevel;                                              // 升了多少级
+
+		// 步骤 9：若发生升级，先加等级，再发放奖励点并设置回满标记与升级事件
 		if (NumLevelUps > 0)
 		{
-			const int32 AttributePointsReward = IPlayerInterface::Execute_GetAttributePointsReward(Props.SourceCharacter, CurrentLevel);
-			const int32 SpellPointsReward = IPlayerInterface::Execute_GetSpellPointsReward(Props.SourceCharacter, CurrentLevel);
+			IPlayerInterface::Execute_AddToPlayerLevel(Props.SourceCharacter, NumLevelUps);             // 直接加多个等级
 
-			IPlayerInterface::Execute_AddToPlayerLevel(Props.SourceCharacter,NumLevelUps);
-			IPlayerInterface::Execute_AddToAttributePoints(Props.SourceCharacter,AttributePointsReward);
-			IPlayerInterface::Execute_AddToSpellPoints(Props.SourceCharacter,SpellPointsReward);
+			int32 AttributePointsReward = 0;                                                            // 属性点奖励汇总
+			int32 SpellPointsReward = 0;                                                                // 技能点奖励汇总
 
-		
-			bTopOffHealth = true;
-			bTopOffMana = true;
-				
-				
-				
+			// 步骤 10：按“跨过的每一级”累计奖励（从 CurrentLevel 开始逐级取）
+			for (int32 i = 0; i < NumLevelUps; ++i)
+			{
+				AttributePointsReward += IPlayerInterface::Execute_GetAttributePointsReward(Props.SourceCharacter, CurrentLevel + i); // 第 i 级的属性点奖励
+				SpellPointsReward     += IPlayerInterface::Execute_GetSpellPointsReward    (Props.SourceCharacter, CurrentLevel + i); // 第 i 级的技能点奖励
+			}
 
-		
-			IPlayerInterface::Execute_LeveUp(Props.SourceCharacter);
+			// 步骤 11：一次性把累计的奖励发放给玩家
+			IPlayerInterface::Execute_AddToAttributePoints(Props.SourceCharacter, AttributePointsReward); // 加总属性点
+			IPlayerInterface::Execute_AddToSpellPoints    (Props.SourceCharacter, SpellPointsReward);     // 加总技能点
+
+			// 步骤 12：设置“回满生命/法力”的标记（实际回满在 PostAttributeChange 执行）
+			bTopOffHealth = true;                                                                        // 升级后回满血
+			bTopOffMana   = true;                                                                        // 升级后回满蓝
+
+			// 步骤 13：广播/回调“升级事件”（用于 UI/特效/音效等）
+			IPlayerInterface::Execute_LeveUp(Props.SourceCharacter);                                     // 触发升级事件（注意接口方法拼写）
 		}
-		
-		IPlayerInterface::Execute_AddToXP(Props.SourceCharacter, LocalIncomingXP);
+
+		// 步骤 14：无论是否升级，最后把本次经验累加到总经验池
+		IPlayerInterface::Execute_AddToXP(Props.SourceCharacter, LocalIncomingXP);                       // 增加总经验
 	}
 }
-
 
 /**
  * @brief 从上游 EffectContext 读取 Debuff 参数，动态创建“周期伤害（DoT）”GE 并施加到 TargetASC

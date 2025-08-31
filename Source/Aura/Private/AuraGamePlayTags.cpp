@@ -206,6 +206,12 @@ void FAuraGamePlayTags::InitializeNativeGameplayTags()
 	GamePlayTags.Abilities_Lightning_Electrocute= UGameplayTagsManager::Get().AddNativeGameplayTag(FName("Abilities.Lightning.Electrocute"),
 	FString(TEXT("闪电攻击")));
 
+	GamePlayTags.Abilities_Passive_HaloOfProtection= UGameplayTagsManager::Get().AddNativeGameplayTag(FName("Abilities.Passive.HaloOfProtection"),
+FString(TEXT("被动技能：护盾")));
+	GamePlayTags.Abilities_Passive_LifeSiphon= UGameplayTagsManager::Get().AddNativeGameplayTag(FName("Abilities.Passive.LifeSiphon"),
+FString(TEXT("被动技能：生命摄取")));
+	GamePlayTags.Abilities_Passive_ManaSiphon= UGameplayTagsManager::Get().AddNativeGameplayTag(FName("Abilities.Passive.ManaSiphon"),
+FString(TEXT("被动技能：法力摄取")));
 	/*
 	 * 技能冷却
 	 */

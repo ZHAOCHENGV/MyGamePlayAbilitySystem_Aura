@@ -11,6 +11,7 @@
 #include "GAS/Data/AbilityInfo.h"
 #include "Interation/PlayerInterface.h"
 
+
 void UAuraAbilitySystemComponent::AbilityActorInfoSet()
 {
 	// 将 OnGameplayEffectAppliedDelegateToSelf 事件委托绑定到当前对象（this）和 EffectApplied() 函数。
@@ -282,24 +283,59 @@ FGameplayTag UAuraAbilitySystemComponent::GetStatusFromSpec(const FGameplayAbili
 	return FGameplayTag();
 }
 
+/**
+ * @brief 通过“能力标签”查询该能力的“状态标签”（如：已装备/已解锁等）
+ *
+ * @param AbilityTag 能力的标识标签（例如 Abilities.Fireball）
+ * @return FGameplayTag 若找到对应的 Spec，则返回其状态标签；否则返回“空标签”（无效）
+ *
+ * 功能说明：
+ * - 先用 AbilityTag 定位到对应的 FGameplayAbilitySpec；
+ * - 再从该 Spec 中提取“状态标签”（项目自定义语义，如 Equipped/Unlocked/CoolingDown 等）。
+ *
+ * 注意事项：
+ * - 若 AbilityTag 无效或未匹配到任何 Spec，则返回空标签（默认构造的 FGameplayTag）；
+ * - GetSpecFromAbilityTag 内部应做好加锁/遍历（建议使用 FScopedAbilityListLock）；
+ * - 若项目中一个 AbilityTag 可能对应多条 Spec，需在 GetSpecFromAbilityTag 内定义清晰的选择规则（如取第一条）。
+ */
 FGameplayTag UAuraAbilitySystemComponent::GetStatusFromAbilityTag(const FGameplayTag& AbilityTag)
 {
-	if (const FGameplayAbilitySpec* Spec = GetSpecFromAbilityTag(AbilityTag))
+	// 步骤 1：尝试用 AbilityTag 找到对应的能力规格（Spec）
+	if (const FGameplayAbilitySpec* Spec = GetSpecFromAbilityTag(AbilityTag)) // 找到则进入
 	{
-		return GetStatusFromSpec(*Spec);
+		// 步骤 2：从 Spec 中解析并返回“状态标签”
+		return GetStatusFromSpec(*Spec); // 例如返回 Abilities_Status_Equipped / Abilities_Status_Unlocked 等
 	}
-	return FGameplayTag();
+	// 步骤 3：未找到对应 Spec，返回“空标签”
+	return FGameplayTag(); // 无效标签，调用端可用 IsValid() 判断
 }
 
-FGameplayTag UAuraAbilitySystemComponent::GetInputFromAbilityTag(const FGameplayTag& AbilityTag)
+/**
+ * @brief 通过“能力标签”查询该能力的“槽位/输入标签”（如：绑定到 LMB/Q/E 等）
+ *
+ * @param AbilityTag 能力的标识标签（例如 Abilities.Fireball）
+ * @return FGameplayTag 若找到对应的 Spec，则返回其输入/槽位标签；否则返回“空标签”（无效）
+ *
+ * 功能说明：
+ * - 先用 AbilityTag 定位对应的 FGameplayAbilitySpec；
+ * - 再从该 Spec 的“动态标签集合”中取出“输入/槽位标签”（项目中常作为绑定键位/槽位的标识）。
+ *
+ * 注意事项：
+ * - 旧代码可能从 Spec.DynamicAbilityTags 中取；UE 新版推荐使用 Spec.GetDynamicSpecSourceTags()；
+ * - 若能力未绑定到任何槽位，或 AbilityTag 无效，则返回空标签；
+ * - 槽位语义与“输入标签”在部分项目中等价（例如 Abilities.Slot.LMB / InputTag.LMB），注意统一。
+ */
+FGameplayTag UAuraAbilitySystemComponent::GetSlotFromAbilityTag(const FGameplayTag& AbilityTag)
 {
-	if (const FGameplayAbilitySpec* Spec = GetSpecFromAbilityTag(AbilityTag))
+	// 步骤 1：尝试用 AbilityTag 找到对应的能力规格（Spec）
+	if (const FGameplayAbilitySpec* Spec = GetSpecFromAbilityTag(AbilityTag)) // 找到则进入
 	{
-		return GetInputTagFromSpec(*Spec);
+		// 步骤 2：从 Spec 中解析并返回“输入/槽位标签”
+		return GetInputTagFromSpec(*Spec); // 例如返回 Abilities.Slot.Q / InputTag.LMB 等
 	}
-	return FGameplayTag();
+	// 步骤 3：未找到对应 Spec，返回“空标签”
+	return FGameplayTag(); // 无效标签，调用端可用 IsValid() 判断
 }
-
 
 /**
  * [客户端] 发起属性升级请求
@@ -380,6 +416,35 @@ FGameplayAbilitySpec* UAuraAbilitySystemComponent::GetSpecFromAbilityTag(const F
 	}
 	// 未找到匹配技能
 	return nullptr;
+}
+
+
+/**
+	 * @brief 多播 RPC：通知所有端（含服务器本地）某“被动效果”应当启用/停用
+	 *
+	 * @param AbilityTag 目标被动能力的标签（与监听方做精确匹配）
+	 * @param bActivate  true=启用，false=停用
+	 *
+	 * 功能说明：
+	 * - 服务器调用本函数后，UE 网络层会把该调用以 **NetMulticast** 的方式发送到所有已连接客户端，
+	 *   并在各端执行 `_Implementation`，里面通过委托把事件广播给已绑定的系统（如 Niagara 组件或被动 GA）。
+	 *
+	 * 详细流程：
+	 * 1) **服务器**调用 `MulticastActivatePassiveEffect(...)`；
+	 * 2) 引擎网络层按 **Unreliable**（不保证送达/顺序）的语义把 RPC 发往各客户端；
+	 * 3) 各端（含服务器本地）进入 `_Implementation`；
+	 * 4) 通过 `ActivatePassiveEffect.Broadcast(AbilityTag, bActivate)` 通知所有监听者；
+	 * 5) 监听者（如 `UPassiveNiagaraComponent` / `UAuraPassiveAbility`）据 `AbilityTag` 与 `bActivate` 做启停。
+	 *
+	 * 注意事项：
+	 * - **仅服务器**应调用该 RPC（NetMulticast 的发送端必须是服务器），可在调用点加 `ensure(HasAuthority())`；
+	 * - **Unreliable**：可能丢包/乱序/晚到，**不适合**承载“必须到达”的关键状态；建议事件应“幂等可重放”，或用额外的**可复制状态**兜底；
+	 * - **晚加入的客户端**收不到历史多播，若需要初始同步，考虑使用 `OnRep` 的布尔状态（如 `bPassiveActive`）或 `Reliable`（但注意带宽/拥塞）；
+	 * - 在监听端（组件/GA）要**先完成委托绑定**，再触发多播，否则本次事件可能被错过。
+	 */
+void UAuraAbilitySystemComponent::MulticastActivatePassiveEffect_Implementation(const FGameplayTag& AbilityTag,bool bActivate)
+{
+	ActivatePassiveEffect.Broadcast(AbilityTag, bActivate); // 广播项目内委托；监听者据 Tag/状态做启停
 }
 
 /**
@@ -482,71 +547,277 @@ void UAuraAbilitySystemComponent::ServerSpendSpellPoint_Implementation(const FGa
 }
 
 
+
 /**
- * 服务器端执行技能装备逻辑（RPC实现）
- * 
- * @param AbilityTag 要装备的技能标签
- * @param Slot 目标装备槽位标签
- * 
+ * @brief 服务器端为“指定能力标签”绑定到“指定槽位”的实现（Server RPC）
+ *
+ * @param AbilityTag  目标能力的标识标签（如 Abilities.Fireball）
+ * @param Slot        目标槽位/输入标签（如 InputTag.LMB / Abilities.Slot.Q）
+ *
  * 功能说明：
- * 1. 验证技能是否可装备（已解锁或已装备状态）
- * 2. 清除目标槽位上的现有技能
- * 3. 更新技能标签和状态
- * 4. 同步状态到客户端
- * 
- * 网络说明：
- * - 使用_Implementation后缀表示这是服务器RPC的实际实现
- * - 仅在服务端执行，客户端调用需通过Server前缀函数
+ * - 在服务器上根据 AbilityTag 找到对应的 FGameplayAbilitySpec；
+ * - 校验该能力当前状态（已解锁/已装备才允许装备到槽位）；
+ * - 若目标槽位已被其他能力占用：处理“同能力重复装备”的快速返回；否则清理旧能力槽位，并在必要时“停用旧被动”；
+ * - 若本次是该能力**首次**占用槽位且是“被动型能力”，则尝试激活并广播被动启用；
+ * - 把能力分配到新槽位、标记 Spec 脏以触发复制，并通知客户端 UI 同步。
+ *
+ * 详细流程（高层）：
+ * 1) GetSpecFromAbilityTag → Spec；取出旧槽位 PrevSlot 与当前状态 Status；
+ * 2) 允许状态：Equipped/Unlocked 才继续；
+ * 3) 若 Slot 已被占用：
+ *    3.1) 如果就是同一个 Ability：直接 Client 通知并 return（无需改动）；
+ *    3.2) 如果是别的 Ability：若它是 Passive → 先停用并广播，然后 ClearSlot(旧 Spec)；
+ * 4) 若本能力尚未占用任何槽位 且 是 Passive → TryActivateAbility + Multicast 被动启用；
+ * 5) AssignSlotToAbility（把本能力放到新槽位）+ MarkAbilitySpecDirty；
+ * 6) 最后 ClientEquipAbility 通知客户端状态（UI/提示等）。
+ *
+ * 注意事项：
+ * - 本函数是 “_Implementation” 版本，仅在服务器执行；调用方应通过 Server RPC 入口；
+ * - ClearSlot / AssignSlotToAbility 修改了 Spec 的“动态源标签”，务必 MarkAbilitySpecDirty 触发同步；
+ * - GetSpecWithSlot 函数名疑似拼写（应为 With）；HasAnySlot / IsPassiveAbility 等函数内部建议使用 GetDynamicSpecSourceTags() 新 API；
+ * - 若 Slot 无效或 AbilityTag 未找到 Spec，函数将不做任何处理（可按项目需求补充日志与保护）。
  */
 void UAuraAbilitySystemComponent::ServerEquipAbility_Implementation(
     const FGameplayTag& AbilityTag,
     const FGameplayTag& Slot)
 {
-    // 1. 获取目标技能的规格信息
+    // 步骤 1：用能力标签查找对应的能力规格（Spec）
     if (FGameplayAbilitySpec* AbilitySpec = GetSpecFromAbilityTag(AbilityTag))
     {
-        // 获取游戏标签单例（包含状态标签如Equipped/Unlocked）
-        const FAuraGamePlayTags GamePlayTags = FAuraGamePlayTags::Get();
-        
-        // 获取技能当前槽位和状态
+        // 步骤 2：获取全局标签单例（集中管理项目用到的标签）
+        const FAuraGamePlayTags& GamePlayTags = FAuraGamePlayTags::Get();
+        // 步骤 3：读取该能力当前绑定的“旧槽位”标签（如果有）
         const FGameplayTag& PrevSlot = GetInputTagFromSpec(*AbilitySpec);
+        // 步骤 4：读取该能力当前的“状态”标签（如 Equipped/Unlocked）
         const FGameplayTag& Status = GetStatusFromSpec(*AbilitySpec);
         
-        // 2. 验证技能状态：必须是已解锁或已装备状态
-        const bool bStatusValid = Status == GamePlayTags.Abilities_Status_Equipped || 
-                                 Status == GamePlayTags.Abilities_Status_Unlocked;
+        // 步骤 5：允许装备的状态仅为“已装备”或“已解锁”
+        const bool bStatusValid = Status == GamePlayTags.Abilities_Status_Equipped || Status == GamePlayTags.Abilities_Status_Unlocked;
         
+        // 步骤 6：仅当状态合法时才进行装备逻辑
         if (bStatusValid)
         {
-            // 3. 清除目标槽位上的所有技能（确保槽位唯一性）
-            ClearAbilitiesOfSlot(Slot);
-            
-            // 4. 清除当前技能原有的槽位标签
-            ClearSlot(AbilitySpec);
-            
-            // 5. 添加新槽位标签到技能
-            AbilitySpec->DynamicAbilityTags.AddTag(Slot);
-            
-            // 6. 状态升级：从未装备到已装备
-            if (Status.MatchesTagExact(GamePlayTags.Abilities_Status_Unlocked))
+            // 步骤 7：如果目标槽位当前不是空的，需要处理“顶掉/替换”
+            if (!SlotIsEmpty(Slot))
             {
-                // 移除"未装备"状态标签
-                AbilitySpec->DynamicAbilityTags.RemoveTag(GamePlayTags.Abilities_Status_Unlocked);
-                
-                // 添加"已装备"状态标签
-                AbilitySpec->DynamicAbilityTags.AddTag(GamePlayTags.Abilities_Status_Equipped);
+                // 步骤 7.1：找到当前占用该槽位的能力 Spec
+                FGameplayAbilitySpec* SpecWithSlot = GetSpecWithSlot(Slot);
+                if (SpecWithSlot)
+                {
+                    // 步骤 7.2：如果占位的就是“同一个能力”，那就只是重复装备 → 直接同步到客户端并返回
+                    if (AbilityTag.MatchesTagExact(GetAbilityTagFromSpec(*SpecWithSlot)))
+                    {
+                        ClientEquipAbility(AbilityTag, GamePlayTags.Abilities_Status_Equipped, Slot, PrevSlot); // 通知客户端：同能力维持已装备状态
+                        return; // 无需继续处理
+                    }
+
+                    // 步骤 7.3：若被顶掉的是“被动型能力”，先停用被动并广播（避免残留效果）
+                    if (IsPassiveAbility(*SpecWithSlot))
+                    {
+                        MulticastActivatePassiveEffect(GetAbilityTagFromSpec(*SpecWithSlot), false);     // 多播：关闭被动表现
+                        DeactivatePassiveAbility.Broadcast((GetAbilityTagFromSpec(*SpecWithSlot)));      // 本地/蓝图事件：被动已停用
+                    }
+
+                    // 步骤 7.4：清空旧能力的槽位标签（释放该 Slot）
+                    ClearSlot(SpecWithSlot);
+                    // 注意：此处可视情况 MarkAbilitySpecDirty(*SpecWithSlot) 以立刻同步旧 Spec 的变更（见建议）
+                }
             }
-            
-            // 7. 标记技能规格为脏数据（触发网络同步）
+
+            // 步骤 8：如果“本能力此前没有任何槽位”且它是“被动型”，先尝试激活被动（首次绑定触发）
+            if (!AbilityHasAnySlot(*AbilitySpec))
+            {
+                if (IsPassiveAbility(*AbilitySpec))
+                {
+                    TryActivateAbility(AbilitySpec->Handle);          // 激活被动 GA（通常是持续效果/被动监听）
+                    MulticastActivatePassiveEffect(AbilityTag, true); // 多播：打开被动表现（VFX/SFX/UI）
+                }
+            }
+
+            // 步骤 9：把本能力分配到新槽位（会写入 Spec 的动态源标签）
+            AssignSlotToAbility(*AbilitySpec, Slot);
+            // 步骤 10：标记该 Spec“脏”，驱动 GAS 复制/同步
             MarkAbilitySpecDirty(*AbilitySpec);
         }
         
-        // 8. 通知客户端装备结果
+        // 步骤 11：向客户端发送“已装备”通知（用于 UI 刷新、快捷栏高亮等）
         ClientEquipAbility(AbilityTag, GamePlayTags.Abilities_Status_Equipped, Slot, PrevSlot);
     }
-    // 建议：添加技能不存在的错误处理
 }
 
+
+/**
+ * @brief 查询指定“槽位”是否为空（即：当前可激活能力列表中，没有任何 GA 标记了该槽位）
+ *
+ * @param Slot 槽位的 GameplayTag（例如 Abilities.Slot.Q / Abilities.Slot.LMB）
+ * @return bool 为空则返回 true（可用于判定“能否装备到该槽位”）
+ *
+ * 功能说明：
+ * - 遍历本 ASC 的“可激活能力列表”，一旦发现有能力的“动态标签”包含该槽位，即认为槽位被占用。
+ * - 使用 FScopedAbilityListLock 保护遍历期的能力列表不被并发修改（GAS 内部约定）。
+ *
+ * 详细流程：
+ * 1) 加锁能力列表；2) 遍历每个 FGameplayAbilitySpec；3) 调用 AbilityHasSlot 判断是否带有 Slot 标签；
+ * 4) 若命中则立即返回 false；5) 全部未命中则返回 true。
+ *
+ * 注意事项：
+ * - HasTag 为包含匹配，若希望“完全一致”，可改用 HasTagExact（见下方“建议与优化”）。
+ * - 此处使用的是 Spec.DynamicAbilityTags（旧 API 会在新版产生警告），建议迁移到 GetDynamicSpecSourceTags。
+ * - 遍历复杂度 O(N)，N 为可激活能力数量；一般足够快，如需高频查询可做缓存映射。
+ */
+bool UAuraAbilitySystemComponent::SlotIsEmpty(const FGameplayTag& Slot)
+{
+	// 步骤 1：加锁能力列表，防止遍历过程中被修改（GAS 线程/复制安全约定）
+	FScopedAbilityListLock ActiveScopeLock(*this); // 进入作用域即加锁，函数结束自动解锁
+
+	// 步骤 2：遍历当前“可激活能力”集合
+	for (FGameplayAbilitySpec& AbilitySpec : GetActivatableAbilities()) // 逐个检查能力规格（Spec）
+	{
+		// 步骤 3：判断该能力是否“拥有该槽位”
+		if (AbilityHasSlot(AbilitySpec, Slot))     // 命中即说明槽位已被占用
+		{
+			return false;                          // 立即返回“非空”
+		}
+	}
+
+	// 步骤 4：遍历完成仍未命中 → 槽位为空
+	return true;                                   // 空槽位
+}
+
+/**
+ * @brief 判断某个能力规格（Spec）的“动态标签”中，是否包含指定槽位标签
+ *
+ * @param Spec 能力规格（包含该 GA 的激活句柄、动态标签等）
+ * @param Slot 槽位标签（如 Abilities.Slot.XXX）
+ * @return bool 若 Spec 的动态标签包含 Slot，则返回 true
+ *
+ * 功能说明：
+ * - 槽位通常不放在 AbilityTags（静态标签）里，而是放在 DynamicAbilityTags（运行时可改）；
+ * - 这里直接用 HasTag 做包含匹配（父子层级也会匹配）。
+ *
+ * 注意事项：
+ * - UE5.4+ 建议改用 Spec.GetDynamicSpecSourceTags().HasTag(Slot)（旧字段会产生弃用警告）。
+ * - 若你希望“必须精确等于某个槽位标签”，请用 HasTagExact。
+ */
+bool UAuraAbilitySystemComponent::AbilityHasSlot(const FGameplayAbilitySpec& Spec, const FGameplayTag& Slot)
+{
+	return Spec.GetDynamicSpecSourceTags().HasTagExact(Slot); // 完全匹配
+}
+
+/**
+ * @brief 判断某个能力 Spec 是否“拥有任意槽位/输入标签”
+ *
+ * @param Spec  要检查的能力规格
+ * @return bool 若 Spec 的“动态源标签”中存在任意“槽位/输入”类标签，则返回 true
+ *
+ * 功能说明：
+ * - 这里用父标签 "InputTag" 做约定：凡是属于该父标签命名空间的（如 InputTag.LMB/E/Q…），都视为“一个槽位”。
+ * - 通过检查动态源标签中是否“匹配”该父标签来判断是否“已占用任意槽位”。
+ *
+ * 注意事项：
+ * - HasTag(Parent) 的匹配语义依赖引擎版本与容器实现；若要更严格，建议遍历容器并逐个 MatchesTag(Parent) 检查（见下方“建议与优化”）。
+ * - 若你的项目用的是 “Abilities.Slot.*” 作为槽位命名，则应把父标签改为对应前缀。
+ */
+bool UAuraAbilitySystemComponent::AbilityHasAnySlot(const FGameplayAbilitySpec& Spec)
+{
+	// 用父标签“InputTag”作为槽位命名空间（约定所有具体槽位都在其之下）
+	return Spec.GetDynamicSpecSourceTags().HasTag(FGameplayTag::RequestGameplayTag(FName("InputTag"))); // 命中父标签即认为有槽位
+}
+/**
+ * @brief 通过“槽位标签”在当前 ASC 的可激活能力中查找对应的 Spec 指针
+ *
+ * @param Slot 槽位标签（如 Abilities.Slot.LMB / Abilities.Slot.Q），要求精确匹配
+ * @return FGameplayAbilitySpec* 找到则返回该 Spec 的指针；找不到返回 nullptr
+ *
+ * 功能说明：
+ * - 对可激活能力列表做一次线性遍历，查找“动态源标签”中**精确包含** Slot 的能力。
+ * - 使用 FScopedAbilityListLock 保护遍历期间的列表一致性（GAS 约定）。
+ *
+ * 详细流程：
+ * 1) 加锁能力列表；2) 遍历每个 Spec；3) 用 GetDynamicSpecSourceTags().HasTagExact(Slot) 判断；
+ * 4) 命中立即返回该 Spec；5) 遍历完未命中则返回 nullptr。
+ *
+ * 注意事项：
+ * - 若项目中允许一个槽位绑定多个能力，需要约定“优先返回哪一个”；当前实现返回**第一个命中**的 Spec。
+ * - 若高频调用，可考虑维护“Slot → SpecHandle”的缓存表以降到 O(1) 查询（见文末建议）。
+ */
+//（命名建议：GetSpecWithSlot；当前函数名 GetSpecWithSlot 拼写可能有误）
+FGameplayAbilitySpec* UAuraAbilitySystemComponent::GetSpecWithSlot(const FGameplayTag& Slot)
+{
+	// 步骤 1：加锁能力列表，防止遍历过程中被修改（复制/添加/移除）
+	FScopedAbilityListLock ActiveScopeLock(*this); // 作用域结束自动解锁
+
+	// 步骤 2：遍历所有“可激活能力”规格
+	for (FGameplayAbilitySpec& AbilitySpec : GetActivatableAbilities()) // 线性扫描 O(N)
+	{
+		// 步骤 3：判断该能力的“动态源标签”是否**精确**包含该槽位标签
+		if (AbilitySpec.GetDynamicSpecSourceTags().HasTagExact(Slot))   // 精确匹配，避免父/子标签误判
+		{
+			return &AbilitySpec;                                        // 命中：返回指向该 Spec 的指针
+		}
+	}
+
+	// 步骤 4：未命中任何能力，返回空指针
+	return nullptr;                                                     // 未绑定该槽位
+}
+
+
+/**
+ * @brief 判断传入的能力 Spec 是否为“被动型”能力（Passive）
+ *
+ * @param AbilitySpec 待判断的能力规格（包含能力实例/标签等）
+ * @return bool 是被动能力则返回 true，否则 false
+ *
+ * 功能说明：
+ * - 通过项目的 AbilityInfo（数据表/数据资产）从“能力标签”映射到“能力类型标签”，
+ *   再和全局被动类型标签 Abilities.Type.Passive 做精确比对。
+ *
+ * 详细流程：
+ * 1) 通过库函数 GetAbilityInfo(Avatar) 拿到 AbilityInfo 数据； 
+ * 2) 从 Spec 提取该能力的“能力标签”（如 Abilities.Fireball）；
+ * 3) 在 AbilityInfo 里查到该标签对应的信息（FAuraAbilityInfo），取出 AbilityType；
+ * 4) 与全局标签单例中的 Abilities_Type_Passive 精确匹配，返回判断结果。
+ *
+ * 注意事项：
+ * - 需保证 AbilityInfo 不为 nullptr，且 FindAbilityInfoForTag 能处理“未找到”的情况（返回默认 info）；
+ * - GetAbilityTagFromSpec 的实现要明确：当一个 Spec 挂了多个标签时选哪个作为“能力标签”。
+ */
+bool UAuraAbilitySystemComponent::IsPassiveAbility(const FGameplayAbilitySpec& AbilitySpec) const
+{
+	// 步骤 1：通过 Avatar 拿到 AbilityInfo（通常是一个集中配置的数据资产/表）
+	const UAbilityInfo* AbilityInfo = UAuraAbilitySystemLibrary::GetAbilityInfo(GetAvatarActor()); // 可能为 nullptr（取决于实现）
+	
+	// 步骤 2：从 Spec 中提取“能力标签”（项目自定义，通常来自 AbilityTags）
+	const FGameplayTag AbilityTag = GetAbilityTagFromSpec(AbilitySpec);                           // 用于在表中查询
+
+	// 步骤 3：在 AbilityInfo 中查找该能力的配置信息（若未找到应返回默认/空信息）
+	const FAuraAbilityInfo& Info = AbilityInfo->FindAbilityInfoForTag(AbilityTag);                // 查表得到类型等
+
+	// 步骤 4：取出“能力类型”标签，与“被动类型”做精确比对
+	const FGameplayTag AbilityType = Info.AbilityType;                                            // 例如 Abilities.Type.Passive
+	return AbilityType.MatchesTagExact(FAuraGamePlayTags::Get().Abilities_Type_Passive);          // 精确匹配：是被动则 true
+}
+
+/**
+ * @brief 将“槽位标签”分配给指定能力 Spec（先清空旧槽位，再写入新槽位）
+ *
+ * @param Spec  要操作的能力规格（FGameplayAbilitySpec），通常来自 ASC 的可激活能力列表
+ * @param Slot  槽位标签（如 Abilities.Slot.LMB / Abilities.Slot.Q），建议为叶子标签并使用精确匹配
+ *
+ * 详细流程：
+ * 1) 调用 ClearSlot(&Spec) 移除该 Spec 现有的所有“槽位/输入”类动态标签；
+ * 2) 使用 GetDynamicSpecSourceTags().AddTag(Slot) 把新槽位写入到 Spec 的“动态源标签”中。
+ *
+ * 注意事项：
+ * - 槽位语义基于“动态标签”，便于运行时切换；请确保 ClearSlot 的实现会移除“InputTag.* / Abilities.Slot.*”等旧槽位；
+ * - 若此操作可能与能力列表的遍历/复制并发发生，外层应使用 FScopedAbilityListLock 加锁；
+ * - Slot 应该是有效标签且来自统一的父标签命名空间（如 InputTag.*），避免含糊匹配。
+ */
+void UAuraAbilitySystemComponent::AssignSlotToAbility(FGameplayAbilitySpec& Spec, const FGameplayTag& Slot)
+{
+	ClearSlot(&Spec);                                       // 先清空旧槽位（防止同一能力绑定多个槽位）
+	Spec.GetDynamicSpecSourceTags().AddTag(Slot);          // 将新槽位写入到“动态源标签”容器
+}
 /**
  * 客户端装备技能的逻辑实现
  * 
@@ -559,7 +830,7 @@ void UAuraAbilitySystemComponent::ServerEquipAbility_Implementation(
  * 1. 广播技能装备事件，通知所有监听者技能的装备状态变化。
  * 2. 该函数主要用于客户端，确保客户端能够接收到技能装备的更新信息。
  */
-void UAuraAbilitySystemComponent::ClientEquipAbility(const FGameplayTag& AbilityTag, const FGameplayTag& Status, const FGameplayTag& Slot, const FGameplayTag& PreviousSlot)
+void UAuraAbilitySystemComponent::ClientEquipAbility_Implementation(const FGameplayTag& AbilityTag, const FGameplayTag& Status, const FGameplayTag& Slot, const FGameplayTag& PreviousSlot)
 {
 	// 1. 广播装备技能事件，允许其他系统或对象响应这一变化
 	AbilityEquipped.Broadcast(AbilityTag, Status, Slot, PreviousSlot);
@@ -642,8 +913,7 @@ void UAuraAbilitySystemComponent::ClearSlot(FGameplayAbilitySpec* Spec)
 	// 2. 移除槽位标签
 	Spec->DynamicAbilityTags.RemoveTag(Slot);
     
-	// 3. 标记技能规格为脏数据
-	MarkAbilitySpecDirty(*Spec);
+
 }
 
 /**

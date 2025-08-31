@@ -14,10 +14,16 @@
 #include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
 
- 
+
+void ACharacterBase::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+	EffectAttachComponent->SetWorldRotation(FRotator::ZeroRotator);
+}
+
 ACharacterBase::ACharacterBase()
 {
- 	PrimaryActorTick.bCanEverTick = false;
+ 	PrimaryActorTick.bCanEverTick = true;
 
 	BurnDebuffComponent = CreateDefaultSubobject<UDebuffNiagaraComponent>(TEXT("BurnDebuffComponent"));
 	BurnDebuffComponent->SetupAttachment(GetRootComponent());
@@ -38,6 +44,15 @@ ACharacterBase::ACharacterBase()
 	GetMesh()->SetGenerateOverlapEvents(true);
 	//设置移动速度
 	GetCharacterMovement()->MaxWalkSpeed = BaseWalkSpeed;
+
+	EffectAttachComponent = CreateDefaultSubobject<USceneComponent>(TEXT("EffectAttachPoint"));
+	EffectAttachComponent->SetupAttachment(GetRootComponent());
+	HaloOfProtectionNiagaraComponent = CreateDefaultSubobject<UPassiveNiagaraComponent>(TEXT("HaloOfProtectionNiagaraComponent"));
+	HaloOfProtectionNiagaraComponent->SetupAttachment(EffectAttachComponent);
+	LifeSiphonNiagaraComponent = CreateDefaultSubobject<UPassiveNiagaraComponent>(TEXT("LifeSiphonNiagaraComponent"));
+	LifeSiphonNiagaraComponent->SetupAttachment(EffectAttachComponent);
+	ManaSiphonNiagaraComponent = CreateDefaultSubobject<UPassiveNiagaraComponent>(TEXT("ManaSiphonNiagaraComponent"));
+	ManaSiphonNiagaraComponent->SetupAttachment(EffectAttachComponent);
 	
 
 }

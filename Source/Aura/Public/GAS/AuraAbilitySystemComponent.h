@@ -22,6 +22,9 @@ DECLARE_MULTICAST_DELEGATE_ThreeParams(FAbilityStatusChanged, const FGameplayTag
 
 DECLARE_MULTICAST_DELEGATE_FourParams(FAbilityEquipped,const FGameplayTag& /*技能标签*/, const FGameplayTag& /*技能状态*/, const FGameplayTag& /*技能插槽*/, const FGameplayTag& /*上一技能插槽*/)
 
+DECLARE_MULTICAST_DELEGATE_OneParam(FDeactivatePassiveAbility, const FGameplayTag& /*技能标签*/)
+
+DECLARE_MULTICAST_DELEGATE_TwoParams(FActivatePassiveEffect, const FGameplayTag& /*技能标签*/, bool /*是否启用*/)
 /**
  * 
  */
@@ -45,6 +48,12 @@ public:
 
 	//装备能力委托
 	FAbilityEquipped AbilityEquipped;
+
+	//停用被动技能委托
+	FDeactivatePassiveAbility DeactivatePassiveAbility;
+
+	//激活被动效果委托
+	FActivatePassiveEffect ActivatePassiveEffect;
 	
 	//是否能力初始化完成?
 	bool bStartupAbilitiesGiven = false;
@@ -71,9 +80,24 @@ public:
 	//从技能标签获取状态
 	FGameplayTag GetStatusFromAbilityTag(const FGameplayTag& AbilityTag);
 	//从能力标签获取输入标签
-	FGameplayTag GetInputFromAbilityTag(const FGameplayTag& AbilityTag);
+	FGameplayTag GetSlotFromAbilityTag(const FGameplayTag& AbilityTag);
+	// 锁为空 ?
+	bool SlotIsEmpty(const FGameplayTag& Slot);
+	// 能力有槽位
+	static bool AbilityHasSlot(const FGameplayAbilitySpec& Spec, const FGameplayTag& Slot);
+	// 技能有任意槽位
+	static bool AbilityHasAnySlot(const FGameplayAbilitySpec& Spec);
+	// 获取技能插槽
+	FGameplayAbilitySpec* GetSpecWithSlot(const FGameplayTag& Slot);
+	//是否是被动技能
+	bool IsPassiveAbility(const FGameplayAbilitySpec& AbilitySpec) const;
+	//为技能分配槽位
+	static void AssignSlotToAbility(FGameplayAbilitySpec& Spec, const FGameplayTag& Slot);
 	//根据技能标签查找对应的技能规格
 	FGameplayAbilitySpec* GetSpecFromAbilityTag(const FGameplayTag& AbilityTag);
+	//多播 激活被动效果
+	UFUNCTION(NetMulticast, Unreliable)  // 多播到所有客户端；不保证到达/顺序
+	void MulticastActivatePassiveEffect(const FGameplayTag& AbilityTag, bool bActivate);
 	//更新属性
 	void UpgradeAttribute(const FGameplayTag& AttributeTag);
 	//在服务器上更新属性
@@ -89,11 +113,12 @@ public:
 	UFUNCTION(Server, Reliable)
 	void ServerEquipAbility(const FGameplayTag& AbilityTag, const FGameplayTag& Slot);
 	//客户端装备能力
+	UFUNCTION(Client, Reliable)
 	void ClientEquipAbility(const FGameplayTag& AbilityTag, const FGameplayTag& Status, const FGameplayTag& Slot, const FGameplayTag& PreviousSlot);
 	//根据技能标签获取技能描述信息
 	bool GetDescriptionsByAbilityTag(const FGameplayTag& AbilityTag, FString& OutDescription, FString& OutNextDescription);
 	//清除插槽
-	void ClearSlot(FGameplayAbilitySpec* Spec);
+	static void ClearSlot(FGameplayAbilitySpec* Spec);
 	//插槽的清除能力
 	void ClearAbilitiesOfSlot(const FGameplayTag& Slot);
 	//判断能力是否有槽位

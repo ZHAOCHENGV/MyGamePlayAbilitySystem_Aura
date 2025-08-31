@@ -127,7 +127,7 @@ void USpellMenuWidgetController::SpellGlobeSelected(const FGameplayTag& AbilityT
         if (SelectedStatus.MatchesTagExact(FAuraGamePlayTags::Get().Abilities_Status_Equipped))
         {
             // 存储选中技能的输入槽位（用于后续装备逻辑）
-            SelectedSlot = GetAuraASC()->GetInputFromAbilityTag(SelectedAbility.AbilityTag);
+            SelectedSlot = GetAuraASC()->GetSlotFromAbilityTag(SelectedAbility.AbilityTag);
         }
     }
 

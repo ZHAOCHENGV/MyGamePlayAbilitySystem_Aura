@@ -6,6 +6,7 @@
 #include "AbilitySystemInterface.h"
 #include "GameFramework/Character.h"
 #include "GAS/Data/CharacterClassInfo.h"
+#include "GAS/Passive/PassiveNiagaraComponent.h"
 #include "Interation/CombatInterface.h"
 #include "CharacterBase.generated.h"
 
@@ -27,7 +28,7 @@ class AURA_API ACharacterBase : public ACharacter,public IAbilitySystemInterface
 	GENERATED_BODY()
 
 public:
-	
+	virtual void Tick(float DeltaTime) override;
 	//构造函数
 	ACharacterBase();
 	//重写IAbilitySystemInterface接口中的 事件
@@ -238,4 +239,20 @@ private:
 	//被击蒙太奇
 	UPROPERTY(EditAnywhere,Category="Combat")
 	TObjectPtr<UAnimMontage> HitReactMontage ;
+
+	//保护光环Niagara组件
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<UPassiveNiagaraComponent> HaloOfProtectionNiagaraComponent;
+
+	//生命吸取Niagara组件
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<UPassiveNiagaraComponent> LifeSiphonNiagaraComponent;
+
+	//法力吸取Niagara组件
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<UPassiveNiagaraComponent> ManaSiphonNiagaraComponent;
+
+	//效果附加组件
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<USceneComponent> EffectAttachComponent;
 };
