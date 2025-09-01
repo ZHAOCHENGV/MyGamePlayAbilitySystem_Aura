@@ -215,6 +215,39 @@ int32 AAuraCharacter::GetSpellPoints_Implementation() const
 	return AuraPlayerState->GetSpellPoints();
 }
 
+/**
+ * @brief （RPC/事件实现）在角色端请求显示“魔法指示圈”
+ *
+ * @param DecalMaterial 可选材质（覆盖默认）
+ *
+ * 功能说明：
+ * - 从角色获取其控制器，并转为 AAuraPlayerController，调用控制器的 ShowMagicCircle。
+ *
+ * 注意事项：
+ * - 函数名带 _Implementation：通常对应 BlueprintNativeEvent / RPC 的实现体。
+ * - 建议作为**Client/OwnerOnly**调用，避免在服务器/非拥有客户端生成 UI 表现。
+ */
+void AAuraCharacter::ShowMagicCircle_Implementation(UMaterialInterface* DecalMaterial)
+{
+	if (AAuraPlayerController* AuraPlayerController = Cast<AAuraPlayerController>(GetController())) // 拿到我自己的控制器
+	{
+		AuraPlayerController->ShowMagicCircle(DecalMaterial);       // 让控制器去生成/显示
+	}
+}
+/**
+ * @brief （RPC/事件实现）在角色端请求隐藏“魔法指示圈”
+ *
+ * 功能说明：
+ * - 获取控制器并调用 HideMagicCircle 销毁指示圈 Actor。
+ */
+void AAuraCharacter::HideMagicCircle_Implementation()
+{
+	if (AAuraPlayerController* AuraPlayerController = Cast<AAuraPlayerController>(GetController())) // 拿到我自己的控制器
+	{
+		AuraPlayerController->HideMagicCircle();                    // 让控制器去隐藏（销毁）
+	}
+}
+
 int32 AAuraCharacter::GetPlayerLevel_Implementation()
 {
 	//获取玩家状态

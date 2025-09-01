@@ -68,4 +68,11 @@ public:
 	//升級
 	UFUNCTION(BlueprintNativeEvent)
 	void LeveUp();
+
+	//显示魔法阵
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void ShowMagicCircle(UMaterialInterface* DecalMaterial = nullptr);
+	//隐藏魔法阵
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void HideMagicCircle();
 };

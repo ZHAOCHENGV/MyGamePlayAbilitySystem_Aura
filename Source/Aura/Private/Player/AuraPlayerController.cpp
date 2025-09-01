@@ -10,10 +10,12 @@
 #include "NavigationPath.h"
 #include "NavigationSystem.h"
 #include "NiagaraFunctionLibrary.h"
+#include "Actor/MagicCircle.h"
 #include "Components/SplineComponent.h"
 #include "GAS/AuraAbilitySystemComponent.h"
 #include "Input/AuraInputComponent.h"
 #include "Character/CharacterBase.h"
+#include "Components/DecalComponent.h"
 #include "UI/Widget/DamageTextComponent.h"
 
 
@@ -29,6 +31,73 @@ void AAuraPlayerController::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 	CursorTrace();
 	AutoRun();
+	UpdateMagicCircleLocation();
+}
+
+/**
+ * @brief 在玩家控制器上显示“魔法指示圈”（Decal），用于选地/施法预览
+ *
+ * @param DecalMaterial 可选的材质（传入则覆盖默认材质）
+ *
+ * 功能说明：
+ * - 只在指针 MagicCircle 不存在时生成一次 AMagicCircle（避免重复生成）。
+ * - 如传入 Decal 材质，设置到指示圈的 Decal 组件第 0 号槽位。
+ *
+ * 详细流程：
+ * 1) 判断 MagicCircle 是否有效；若无 → Spawn 一个 AMagicCircle；
+ * 2) 若传入 DecalMaterial → 设置到 MagicCircle 的 Decal 组件；
+ * 3) 后续通过 UpdateMagicCircleLocation 持续更新位置，通过 HideMagicCircle 销毁。
+ *
+ * 注意事项：
+ * - 确保 MagicCircleClass 在蓝图/资产中已设置；否则 SpawnActor 会失败（返回 nullptr）。
+ * - 该类多用于“本地表现”，推荐只在**拥有者客户端**调用（避免在服务器/非拥有客户端生成 UI 类 Actor）。
+ * - 材质槽位索引为 0，如你的 Decal 有多层材质，请确认索引。
+ */
+void AAuraPlayerController::ShowMagicCircle(UMaterialInterface* DecalMaterial)
+{
+	// 若当前还没有生成过指示圈
+	if (!IsValid(MagicCircle))                                      // IsValid：非空且未 PendingKill
+	{
+		MagicCircle = GetWorld()->SpawnActor<AMagicCircle>(MagicCircleClass); // 生成指示圈 Actor（类来自配置）
+		if (DecalMaterial)                                           // 传入了材质就替换默认材质
+		{
+			MagicCircle->MagicCircleDecal->SetMaterial(0, DecalMaterial); // 设置到 Decal 组件第 0 个槽位
+		}
+	}
+}
+/**
+ * @brief 隐藏（销毁）魔法指示圈
+ *
+ * 功能说明：
+ * - 若指示圈已存在，则调用 Destroy() 进行销毁。
+ *
+ * 注意事项：
+ * - Destroy 后指针不会自动置空，但 IsValid 将返回 false；如需更严谨，可手动置 nullptr。
+ * - 如果是“短时间频繁开关”，建议用 SetActorHiddenInGame(true/false) 替代销毁重建（见文末建议）。
+ */
+void AAuraPlayerController::HideMagicCircle()
+{
+	if (IsValid(MagicCircle))                                       // 确认当前存在
+	{
+		MagicCircle->Destroy();                                     // 销毁 Actor（PendingKill）
+	}
+}
+/**
+ * @brief 持续更新魔法指示圈的位置到当前鼠标命中点
+ *
+ * 功能说明：
+ * - 将 AMagicCircle 的 Actor 位置设置为 CursorHit.ImpactPoint（你的鼠标射线命中点）。
+ *
+ * 注意事项：
+ * - 确保 CursorHit 由外部逻辑实时更新（Tick/输入事件中进行 LineTrace）。
+ * - 若需要贴地朝向，可在 AMagicCircle 内或此处同时设置旋转，使 Decal 法线对齐地面法线。
+ */
+void AAuraPlayerController::UpdateMagicCircleLocation()
+{
+	if (IsValid(MagicCircle))                                       // 仅当存在时更新位置
+	{
+		MagicCircle->SetActorLocation(CursorHit.ImpactPoint);       // 把位置对齐到鼠标命中点
+	}
 }
 
 void AAuraPlayerController::AutoRun()
@@ -53,6 +122,8 @@ void AAuraPlayerController::AutoRun()
 		}
 	}
 }
+
+
 
 
 void AAuraPlayerController::BeginPlay()
