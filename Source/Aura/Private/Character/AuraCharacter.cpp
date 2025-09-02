@@ -232,6 +232,7 @@ void AAuraCharacter::ShowMagicCircle_Implementation(UMaterialInterface* DecalMat
 	if (AAuraPlayerController* AuraPlayerController = Cast<AAuraPlayerController>(GetController())) // 拿到我自己的控制器
 	{
 		AuraPlayerController->ShowMagicCircle(DecalMaterial);       // 让控制器去生成/显示
+		AuraPlayerController->bShowMouseCursor = false;			   //关闭显示光标
 	}
 }
 /**
@@ -245,6 +246,7 @@ void AAuraCharacter::HideMagicCircle_Implementation()
 	if (AAuraPlayerController* AuraPlayerController = Cast<AAuraPlayerController>(GetController())) // 拿到我自己的控制器
 	{
 		AuraPlayerController->HideMagicCircle();                    // 让控制器去隐藏（销毁）
+		AuraPlayerController->bShowMouseCursor = true;			   //显示光标				
 	}
 }
 

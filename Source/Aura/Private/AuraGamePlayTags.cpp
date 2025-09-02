@@ -202,9 +202,11 @@ void FAuraGamePlayTags::InitializeNativeGameplayTags()
 	
 	
 	GamePlayTags.Abilities_Fire_FireBolt= UGameplayTagsManager::Get().AddNativeGameplayTag(FName("Abilities.Fire.FireBolt"),
-	FString(TEXT("火球攻击")));
+	FString(TEXT("火球技能")));
 	GamePlayTags.Abilities_Lightning_Electrocute= UGameplayTagsManager::Get().AddNativeGameplayTag(FName("Abilities.Lightning.Electrocute"),
-	FString(TEXT("闪电攻击")));
+	FString(TEXT("闪电技能")));
+	GamePlayTags.Abilities_Arcane_ArcaneShards= UGameplayTagsManager::Get().AddNativeGameplayTag(FName("Abilities.Arcane.ArcaneShards"),
+	FString(TEXT("奥术碎片技能")));
 
 	GamePlayTags.Abilities_Passive_HaloOfProtection= UGameplayTagsManager::Get().AddNativeGameplayTag(FName("Abilities.Passive.HaloOfProtection"),
 FString(TEXT("被动技能：护盾")));
@@ -219,6 +221,8 @@ FString(TEXT("被动技能：法力摄取")));
 	FString(TEXT("火球冷却")));
 	GamePlayTags.Cooldown_Lightning_Electrocute= UGameplayTagsManager::Get().AddNativeGameplayTag(FName("Cooldown.Lightning.Electrocute"),
 	FString(TEXT("闪电冷却")));
+	GamePlayTags.Cooldown_Arcane_ArcaneShards= UGameplayTagsManager::Get().AddNativeGameplayTag(FName("Cooldown.Arcane.ArcaneShards"),
+	FString(TEXT("奥术碎片冷却")));
 	/*
 	 * 战斗插槽
 	 */

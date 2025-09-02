@@ -128,35 +128,47 @@ public:
 	FGameplayTag Debuff_Duration;
 
 	/*
+	 * 技能冷却
+	 */
+	FGameplayTag Cooldown_Fire_FireBolt;
+	FGameplayTag Cooldown_Lightning_Electrocute;
+	FGameplayTag Cooldown_Arcane_ArcaneShards;
+
+	/*
 	 * 技能
 	 */
-	FGameplayTag Abilities_None;
+
+	FGameplayTag Abilities_Fire_FireBolt;
+	FGameplayTag Abilities_Lightning_Electrocute;
+	FGameplayTag Abilities_Arcane_ArcaneShards;
+
 	
+	FGameplayTag Abilities_None;
 	FGameplayTag Abilities_Attack;
 	FGameplayTag Abilities_Summon;
-	
 	FGameplayTag Abilities_HitReact;
 
+	/*
+	 * 技能状态
+	 */
 	FGameplayTag Abilities_Status_Locked;
 	FGameplayTag Abilities_Status_Eligible;
 	FGameplayTag Abilities_Status_Unlocked;
 	FGameplayTag Abilities_Status_Equipped;
 
+	/*
+	 * 技能进攻类型
+	 */
 	FGameplayTag Abilities_Type_Offensive;
 	FGameplayTag Abilities_Type_Passive;
 	FGameplayTag Abilities_Type_None;
 	
-	FGameplayTag Abilities_Fire_FireBolt;
-	FGameplayTag Abilities_Lightning_Electrocute;
+
 
 	FGameplayTag Abilities_Passive_HaloOfProtection;
 	FGameplayTag Abilities_Passive_LifeSiphon;
 	FGameplayTag Abilities_Passive_ManaSiphon;
-	/*
-	 * 技能冷却
-	 */
-	FGameplayTag Cooldown_Fire_FireBolt;
-	FGameplayTag Cooldown_Lightning_Electrocute;
+
 	/*
 	 * 效果
 	 */
