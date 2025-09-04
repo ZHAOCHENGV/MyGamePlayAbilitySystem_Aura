@@ -150,10 +150,26 @@ bool FAuraGameplayEffectContext::NetSerialize(FArchive& Ar, class UPackageMap* M
 		{
 			RepBits |= 1 << 15;
 		}
+		if (bIsRadialDamage)
+		{
+			RepBits |= 1 << 16;
+			if (RadialDamageInnerRadius > 0.f)
+			{
+				RepBits |= 1 << 17;
+			}
+			if (RadialDamageOuterRadius > 0.f)
+			{
+				RepBits |= 1 << 18;
+			}
+			if (RadialDamageOrigin.IsZero())
+			{
+				RepBits |= 1 << 19;
+			}
+		}
 	}
 
 	// 把 RepBits 自己写/读一下，让双方都知道“哪些字段会被同步”
-	Ar.SerializeBits(&RepBits, 15);
+	Ar.SerializeBits(&RepBits, 19);
 
 	// 如果第0位为1：同步 Instigator
 	if (RepBits & (1 << 0))
@@ -269,6 +285,23 @@ bool FAuraGameplayEffectContext::NetSerialize(FArchive& Ar, class UPackageMap* M
 	{
 		KnockBackForce.NetSerialize(Ar, Map, bOutSuccess);
 	}
+	if (RepBits & (1 << 16))
+	{
+		Ar <<bIsRadialDamage;
+		if (RepBits & (1 << 17))
+		{
+			Ar << RadialDamageInnerRadius;
+		}
+		if (RepBits & (1 << 18))
+		{
+			Ar << RadialDamageOuterRadius;
+		}
+		if (RepBits & (1 << 19))
+		{
+			RadialDamageOrigin.NetSerialize(Ar, Map, bOutSuccess);
+		}
+	}
+	
 	// 如果是“读入完成”，把 Instigator/EffectCauser 的关系补回 Context 内部
 	if (Ar.IsLoading())
 	{

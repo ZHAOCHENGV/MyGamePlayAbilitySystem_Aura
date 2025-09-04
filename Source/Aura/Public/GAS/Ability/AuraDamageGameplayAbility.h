@@ -68,6 +68,23 @@ protected:
 	UPROPERTY(EditDefaultsOnly,  Category = "Damage", meta=(DisplayName="技能击退几率"))
 	float KnockBackChance = 0.f;
 
+	//径向损伤
+	UPROPERTY(EditDefaultsOnly,  Category = "Damage", meta=(DisplayName="径向损伤"))
+	bool bIsRadialDamage = false;
+
+	//径向损伤内半径
+	UPROPERTY(EditDefaultsOnly,  Category = "Damage", meta=(DisplayName="径向损伤内半径"))
+	float RadialDamageInnerRadius = 0.f;
+
+
+	//径向损伤外半径
+	UPROPERTY(EditDefaultsOnly,  Category = "Damage", meta=(DisplayName="径向损伤外半径"))
+	float RadialDamageOuterRadius = 0.f;
+
+	//径向损伤原点
+	UPROPERTY(EditDefaultsOnly,  Category = "Damage", meta=(DisplayName="径向损伤原点"))
+	FVector RadialDamageOrigin = FVector::ZeroVector;
+	
 	
 	//从数组中随机获取攻击的蒙太奇
 	UFUNCTION(BlueprintPure)

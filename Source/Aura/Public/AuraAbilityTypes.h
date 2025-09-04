@@ -94,6 +94,24 @@ struct FDamageEffectParams
 	UPROPERTY(BlueprintReadWrite)
 	FVector KnockBackForce = FVector::ZeroVector;
 
+	//径向损伤
+	UPROPERTY(BlueprintReadWrite)
+	bool bIsRadialDamage = false;
+
+	//径向损伤内半径
+	UPROPERTY(BlueprintReadWrite)
+	float RadialDamageInnerRadius = 0.f;
+
+
+	//径向损伤外半径
+	UPROPERTY(BlueprintReadWrite)
+	float RadialDamageOuterRadius = 0.f;
+
+	//径向损伤原点
+	UPROPERTY(BlueprintReadWrite)
+	FVector RadialDamageOrigin = FVector::ZeroVector;
+	
+
 	
 	
 };
@@ -118,6 +136,10 @@ public:
 	TSharedPtr<FGameplayTag> GetDamageType() const {return DamageType;}
 	FVector GetDeathImpulse() const {return DeathImpulse;}
 	FVector GetKnockBackForce() const {return KnockBackForce;}
+	bool IsRadialDamage() const { return bIsRadialDamage; }
+	float GetRadialDamageOuterRadius() const {return RadialDamageOuterRadius;}
+	float GetRaidDamageInnerRadius() const {return RadialDamageInnerRadius;}
+	FVector GetRadialDamageOrigin() const {return RadialDamageOrigin;}
 
 	void SetIsCriticalHit(bool bInIsCriticalHit) { bIsCriticalHit = bInIsCriticalHit; }
 	void SetIsBlockedHit(bool bInIsBlockedHit){ bIsBlockedHit = bInIsBlockedHit; }
@@ -128,7 +150,10 @@ public:
 	void SetDamageType(TSharedPtr<FGameplayTag> InDamageType){DamageType = InDamageType;}
 	void SetDeathImpulse(const FVector& InImpulse){DeathImpulse = InImpulse;}
 	void SetKnockBackForce(const FVector& InForce){KnockBackForce = InForce;}
-	
+	void SetIsRadialDamage(bool bInIsRadialDamage){bIsRadialDamage = bInIsRadialDamage;}
+	void SetRadialDamageInnerRadius(float InRadialDamageInnerRadius){RadialDamageInnerRadius = InRadialDamageInnerRadius;}
+	void SetRadialDamageOuterRadius(float InRadialDamageOuterRadius){RadialDamageOuterRadius = InRadialDamageOuterRadius;}
+	void SetRadialDamageOrigin(const FVector& InRadialDamageOrigin){RadialDamageOrigin = InRadialDamageOrigin;}
 	
 	/** 返回用于序列化的实际结构体，子类必须覆盖 this！ */
 	virtual UScriptStruct* GetScriptStruct() const
@@ -192,6 +217,20 @@ protected:
 	//击退位置
 	UPROPERTY()
 	FVector KnockBackForce = FVector::ZeroVector;
+
+	//径向损伤
+	UPROPERTY()
+	bool bIsRadialDamage = false;
+	//径向损伤内半径
+	UPROPERTY()
+	float RadialDamageInnerRadius = 0.f;
+	//径向损伤外半径
+	UPROPERTY()
+	float RadialDamageOuterRadius = 0.f;
+	//径向损伤原点
+	UPROPERTY()
+	FVector RadialDamageOrigin = FVector::ZeroVector;
+	
 };
 	/*
 	 * TStructOpsTypeTraits :  模板结构用于告诉引擎如何处理一个结构体（或类）的特殊操作。这些特殊操作包括网络序列化、复制、比较等
