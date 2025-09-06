@@ -310,27 +310,71 @@ FGameplayTag UAuraAbilitySystemLibrary::GetDamageType(const FGameplayEffectConte
 	return FGameplayTag();
 }
 
+/**
+ * @brief 从 EffectContextHandle 中读取“死亡冲击向量”（DeathImpulse）
+ *
+ * @param EffectContextHandle 本次效果的上下文句柄（可能携带我们自定义的 FAuraGameplayEffectContext）
+ * @return FVector 若上下文存在且为 FAuraGameplayEffectContext，则返回已写入的 DeathImpulse，否则返回 ZeroVector
+ *
+ * 功能说明：
+ * - GameplayEffect 在构造/应用前，通常会把“死亡冲击方向*强度”的结果写入 Context（自定义扩展字段）。
+ * - 受击端（如 Attribute 结算、角色被打飞等）通过此函数读取该向量以执行物理/动画效果。
+ *
+ * 详细流程：
+ * 1) 用 EffectContextHandle.Get() 取到“基础” FGameplayEffectContext 指针；
+ * 2) 静态转换为我们扩展的 FAuraGameplayEffectContext；
+ * 3) 若转换成功，返回其中存的 DeathImpulse；否则返回 ZeroVector。
+ *
+ * 注意事项：
+ * - EffectContextHandle 可能为空（比如逻辑错误/客户端预测阶段）；需安全退回 ZeroVector。
+ * - 这里使用 static_cast 是基于你**确保**上下文的真实类型为 FAuraGameplayEffectContext；若存在混用风险，建议加断言或类型标记。
+ * - DeathImpulse 通常在“服务端”计算，再经 GE/复制到客户端；客户端直接改该值不会生效。
+ */
 FVector UAuraAbilitySystemLibrary::GetDeathImpulse(const FGameplayEffectContextHandle& EffectContextHandle)
 {
+	// 尝试从句柄拿到“基础 Context”并静态转成我们扩展的 FAuraGameplayEffectContext
 	if (const FAuraGameplayEffectContext* AuraEffectContext = static_cast<const FAuraGameplayEffectContext*>(EffectContextHandle.Get()))
 	{
-		return AuraEffectContext->GetDeathImpulse();
+		// 成功拿到扩展 Context：返回其中记录的 DeathImpulse（方向*强度）
+		return AuraEffectContext->GetDeathImpulse(); // 读取自定义字段
 	}
 	
-	return FVector::ZeroVector;
+	// 失败（空/类型不符）则返回零向量，表示“无死亡冲击”
+	return FVector::ZeroVector; // 安全兜底
 }
 
+/**
+ * @brief 从 EffectContextHandle 中读取“击退力向量”（KnockBackForce）
+ *
+ * @param EffectContextHandle 本次效果的上下文句柄（可能携带我们自定义的 FAuraGameplayEffectContext）
+ * @return FVector 若上下文存在且为 FAuraGameplayEffectContext，则返回已写入的 KnockBackForce，否则返回 ZeroVector
+ *
+ * 功能说明：
+ * - 与 DeathImpulse 类似，KnockBackForce 在造成伤害前由施法端/服务端计算并写入 Context。
+ * - 受击端据此施加 Launch/物理推力或动画位移。
+ *
+ * 详细流程：
+ * 1) 从句柄获取基础 Context 指针；
+ * 2) 转为 FAuraGameplayEffectContext；
+ * 3) 若有效则返回 KnockBackForce；否则 ZeroVector。
+ *
+ * 注意事项：
+ * - ZeroVector 表示“没有击退”；调用端应据此跳过 Launch/强制位移。
+ * - 若你在多个地方都要读取这些向量，建议做一个“统一的安全获取函数”，避免重复判空代码。
+ */
 FVector UAuraAbilitySystemLibrary::GetKnockBackForce(const FGameplayEffectContextHandle& EffectContextHandle)
 {
-	
+	// 同步上：拿到扩展 Context 再取自定义字段
 	if (const FAuraGameplayEffectContext* AuraEffectContext = static_cast<const FAuraGameplayEffectContext*>(EffectContextHandle.Get()))
 	{
-		
-		return AuraEffectContext->GetKnockBackForce();
+		// 返回已写入的击退力向量
+		return AuraEffectContext->GetKnockBackForce(); // 读取自定义字段
 	}
 
-	return FVector::ZeroVector;
+	// 取不到扩展 Context 时，返回零向量
+	return FVector::ZeroVector; // 安全兜底
 }
+
 
 bool UAuraAbilitySystemLibrary::IsCriticalHit(const FGameplayEffectContextHandle& EffectContextHandle)
 {
@@ -344,44 +388,92 @@ bool UAuraAbilitySystemLibrary::IsCriticalHit(const FGameplayEffectContextHandle
 	return false;
 }
 
+/**
+ * @brief 判断本次 EffectContext 是否为“范围伤害（Radial）”
+ *
+ * @param EffectContextHandle 本次效果的上下文句柄（可能携带自定义 FAuraGameplayEffectContext）
+ * @return true=范围伤害；false=非范围或上下文无效
+ *
+ * 功能说明：
+ * - 从句柄中取出我们扩展的 Context，读取其中的 bIsRadialDamage 标记。
+ *
+ * 详细流程：
+ * 1) EffectContextHandle.Get() 取基础 Context；
+ * 2) static_cast 为 FAuraGameplayEffectContext*；
+ * 3) 若有效，返回其中的 IsRadialDamage()；否则 false。
+ *
+ * 注意事项：
+ * - 若 Context 不是我们扩展类型或为空，直接返回 false。
+ * - 建议统一封装一个“安全获取 AuraContext”的小函数（见文末建议）。
+ */
 bool UAuraAbilitySystemLibrary::IsRadialDamage(const FGameplayEffectContextHandle& EffectContextHandle)
 {
+	// 从句柄获取基础 Context，并静态转成我们扩展的 FAuraGameplayEffectContext
 	if (const FAuraGameplayEffectContext* AuraEffectContext = static_cast<const FAuraGameplayEffectContext*>(EffectContextHandle.Get()))
 	{
-		return AuraEffectContext->IsRadialDamage();
+		return AuraEffectContext->IsRadialDamage(); // 读取范围伤害标记
 	}
 
-	return false;
+	return false; // 上下文不可用或类型不符
 }
 
+/**
+ * @brief 读取“范围伤害”的内半径（满伤区半径）
+ *
+ * @param EffectContextHandle 效果上下文句柄
+ * @return float 内半径；无效则返回 0.f
+ *
+ * 功能说明：
+ * - 范围伤害启用时，内半径内通常为“满额伤害”。
+ */
 float UAuraAbilitySystemLibrary::GetRadialDamageInnerRadius(const FGameplayEffectContextHandle& EffectContextHandle)
 {
-
+	// 尝试转为扩展 Context
 	if (const FAuraGameplayEffectContext* AuraEffectContext = static_cast<const FAuraGameplayEffectContext*>(EffectContextHandle.Get())) // 转换检查
 	{
-		return AuraEffectContext->GetRadialDamageInnerRadius(); 
+		return AuraEffectContext->GetRadialDamageInnerRadius(); // 返回内半径
 	}
 	
-	return 0.f;
+	return 0.f; // 无效时兜底
 }
 
+/**
+ * @brief 读取“范围伤害”的外半径（最小伤害边界/衰减终点）
+ *
+ * @param EffectContextHandle 效果上下文句柄
+ * @return float 外半径；无效则返回 0.f
+ *
+ * 功能说明：
+ * - 外半径处通常为“最小伤害”（可能为 0）。
+ */
 float UAuraAbilitySystemLibrary::GetRadialDamageOuterRadius(const FGameplayEffectContextHandle& EffectContextHandle)
 {
+	// 尝试转为扩展 Context
 	if (const FAuraGameplayEffectContext* AuraEffectContext = static_cast<const FAuraGameplayEffectContext*>(EffectContextHandle.Get())) // 转换检查
 	{
-		return AuraEffectContext->GetRadialDamageOuterRadius(); 
+		return AuraEffectContext->GetRadialDamageOuterRadius(); // 返回外半径
 	}
 	
-	return 0.f;
+	return 0.f; // 无效时兜底
 }
 
+/**
+ * @brief 读取“范围伤害”的原点位置
+ *
+ * @param EffectContextHandle 效果上下文句柄
+ * @return FVector 原点坐标；无效则返回 ZeroVector
+ *
+ * 功能说明：
+ * - 多用于爆炸中心、落点中心等；配合内外半径决定衰减。
+ */
 FVector UAuraAbilitySystemLibrary::GetRadialDamageOrigin(const FGameplayEffectContextHandle& EffectContextHandle)
 {
+	// 尝试转为扩展 Context
 	if (const FAuraGameplayEffectContext* AuraEffectContext = static_cast<const FAuraGameplayEffectContext*>(EffectContextHandle.Get()))
 	{
-		return AuraEffectContext->GetRadialDamageOrigin();
+		return AuraEffectContext->GetRadialDamageOrigin(); // 返回原点
 	}
-	return FVector::ZeroVector;
+	return FVector::ZeroVector; // 无效时兜底
 }
 
 void UAuraAbilitySystemLibrary::SetIsBlockedHit(FGameplayEffectContextHandle& EffectContextHandle, bool bInIsBlockedHit)
@@ -405,98 +497,172 @@ void UAuraAbilitySystemLibrary::SetIsCriticalHit(FGameplayEffectContextHandle& E
 	}
 }
 
+/**
+ * @brief 在 EffectContext 中写入“是否暴击”
+ * @param EffectContextHandle GE 上下文句柄（应为 FAuraGameplayEffectContext）
+ * @param bInIsCriticalHit    是否暴击
+ *
+ * 注意：应在“构造/填充 Spec 之前（或至少在 Apply 前）”写入；客户端仅读取，写入通常在服务器侧完成。
+ */
+void UAuraAbilitySystemLibrary::SetIsCriticalHit(FGameplayEffectContextHandle& EffectContextHandle,bool bInIsCriticalHit)
+{
+	// 尝试将句柄中的基础 Context 转成我们扩展的 FAuraGameplayEffectContext
+	if (FAuraGameplayEffectContext* AuraEffectContext = static_cast<FAuraGameplayEffectContext*>(EffectContextHandle.Get()))
+	{
+		AuraEffectContext->SetIsCriticalHit(bInIsCriticalHit); // 写入：暴击标记
+	}
+}
+
+/**
+ * @brief 在 EffectContext 中写入“Debuff 是否判定成功”
+ * @param EffectContextHandle GE 上下文句柄
+ * @param bInSuccessfulDebuff 是否成功
+ */
 void UAuraAbilitySystemLibrary::SetIsSuccessfulDebuff(FGameplayEffectContextHandle& EffectContextHandle,bool bInSuccessfulDebuff)
 {
 	if (FAuraGameplayEffectContext* AuraEffectContext = static_cast<FAuraGameplayEffectContext*>(EffectContextHandle.Get()))
 	{
-		AuraEffectContext->SetIsSuccessfulDebuff(bInSuccessfulDebuff);
+		AuraEffectContext->SetIsSuccessfulDebuff(bInSuccessfulDebuff); // 写入：Debuff 判定结果
 	}
 }
 
+/**
+ * @brief 写入 Debuff 每跳伤害
+ * @param EffectContextHandle GE 上下文句柄
+ * @param InDamage            数值（每跳伤害）
+ */
 void UAuraAbilitySystemLibrary::SetDebuffDamage(FGameplayEffectContextHandle& EffectContextHandle, float InDamage)
 {
 	if (FAuraGameplayEffectContext* AuraEffectContext = static_cast<FAuraGameplayEffectContext*>(EffectContextHandle.Get()))
 	{
-		AuraEffectContext->SetDebuffDamage(InDamage);
+		AuraEffectContext->SetDebuffDamage(InDamage); // 写入：DebuffDamage
 	}
 }
 
+/**
+ * @brief 写入 Debuff 持续时长（秒）
+ * @param EffectContextHandle GE 上下文句柄
+ * @param InDuration          秒
+ */
 void UAuraAbilitySystemLibrary::SetDebuffDuration(FGameplayEffectContextHandle& EffectContextHandle, float InDuration)
 {
 	if (FAuraGameplayEffectContext* AuraEffectContext = static_cast<FAuraGameplayEffectContext*>(EffectContextHandle.Get()))
 	{
-		AuraEffectContext->SetDebuffDuration(InDuration);
+		AuraEffectContext->SetDebuffDuration(InDuration); // 写入：DebuffDuration
 	}
 }
 
+/**
+ * @brief 写入 Debuff 触发频率（周期秒）
+ * @param EffectContextHandle GE 上下文句柄
+ * @param InFrequency         间隔秒
+ */
 void UAuraAbilitySystemLibrary::SetDebuffFrequency(FGameplayEffectContextHandle& EffectContextHandle, float InFrequency)
 {
 	if (FAuraGameplayEffectContext* AuraEffectContext = static_cast<FAuraGameplayEffectContext*>(EffectContextHandle.Get()))
 	{
-		AuraEffectContext->SetDebuffFrequency(InFrequency);
+		AuraEffectContext->SetDebuffFrequency(InFrequency); // 写入：DebuffFrequency
 	}
 }
 
+/**
+ * @brief 写入伤害类型标签（FGameplayTag）
+ * @param EffectContextHandle GE 上下文句柄
+ * @param InDamageType        伤害类型（如 Fire/Physical 等）
+ *
+ * 说明：Context 内部以 TSharedPtr<FGameplayTag> 持有，此处新建 Shared 指针以满足接口。
+ */
 void UAuraAbilitySystemLibrary::SetDamageType(FGameplayEffectContextHandle& EffectContextHandle,const FGameplayTag& InDamageType)
 {
 	if (FAuraGameplayEffectContext* AuraEffectContext = static_cast<FAuraGameplayEffectContext*>(EffectContextHandle.Get()))
 	{
-		const TSharedPtr<FGameplayTag> DamageType = MakeShared<FGameplayTag>(InDamageType);
-		AuraEffectContext->SetDamageType(DamageType);
+		const TSharedPtr<FGameplayTag> DamageType = MakeShared<FGameplayTag>(InDamageType); // 构造共享指针
+		AuraEffectContext->SetDamageType(DamageType);                                       // 写入：DamageType
 	}
 }
 
+/**
+ * @brief 写入死亡冲击向量（方向 * 强度）
+ * @param EffectContextHandle GE 上下文句柄
+ * @param InImpulse           输入向量（建议已归一化后再乘强度）
+ */
 void UAuraAbilitySystemLibrary::SetDeathImpulse(FGameplayEffectContextHandle& EffectContextHandle,const FVector& InImpulse)
 {
 	if (FAuraGameplayEffectContext* AuraEffectContext = static_cast<FAuraGameplayEffectContext*>(EffectContextHandle.Get()))
 	{
-		AuraEffectContext->SetDeathImpulse(InImpulse);
+		AuraEffectContext->SetDeathImpulse(InImpulse); // 写入：DeathImpulse
 	}
 }
 
+/**
+ * @brief 写入击退力向量（方向 * 强度）
+ * @param EffectContextHandle GE 上下文句柄
+ * @param InForce             输入向量（建议已归一化后再乘强度）
+ */
 void UAuraAbilitySystemLibrary::SetKnockBackForce(FGameplayEffectContextHandle& EffectContextHandle,const FVector& InForce)
 {
 	if (FAuraGameplayEffectContext* AuraEffectContext = static_cast<FAuraGameplayEffectContext*>(EffectContextHandle.Get()))
 	{
-		AuraEffectContext->SetKnockBackForce(InForce);
+		AuraEffectContext->SetKnockBackForce(InForce); // 写入：KnockBackForce
 	}
 }
 
+/**
+ * @brief 写入“是否范围伤害 Radial”
+ * @param EffectContextHandle GE 上下文句柄
+ * @param bInIsRadialDamage   是否范围伤害
+ */
 void UAuraAbilitySystemLibrary::SetIsRadialDamage(FGameplayEffectContextHandle& EffectContextHandle,
 	bool bInIsRadialDamage)
 {
 	if (FAuraGameplayEffectContext* AuraEffectContext = static_cast<FAuraGameplayEffectContext*>(EffectContextHandle.Get()))
 	{
-		AuraEffectContext->SetIsRadialDamage(bInIsRadialDamage);
+		AuraEffectContext->SetIsRadialDamage(bInIsRadialDamage); // 写入：bIsRadialDamage
 	}
 }
 
+/**
+ * @brief 写入范围伤害内半径（满伤区半径）
+ * @param EffectContextHandle GE 上下文句柄
+ * @param InInnerRadius       半径（cm）
+ */
 void UAuraAbilitySystemLibrary::SetRadialDamageInnerRadius(FGameplayEffectContextHandle& EffectContextHandle,
 	float InInnerRadius)
 {
 	if (FAuraGameplayEffectContext* AuraEffectContext = static_cast<FAuraGameplayEffectContext*>(EffectContextHandle.Get()))
 	{
-		AuraEffectContext->SetRadialDamageInnerRadius(InInnerRadius);
+		AuraEffectContext->SetRadialDamageInnerRadius(InInnerRadius); // 写入：InnerRadius
 	}
 }
 
+/**
+ * @brief 写入范围伤害外半径（最小伤害边界）
+ * @param EffectContextHandle GE 上下文句柄
+ * @param InOuterRadius       半径（cm）
+ */
 void UAuraAbilitySystemLibrary::SetRadialDamageOuterRadius(FGameplayEffectContextHandle& EffectContextHandle,
 	float InOuterRadius)
 {
 	if (FAuraGameplayEffectContext* AuraEffectContext = static_cast<FAuraGameplayEffectContext*>(EffectContextHandle.Get()))
 	{
-		AuraEffectContext->SetRadialDamageOuterRadius(InOuterRadius);
+		AuraEffectContext->SetRadialDamageOuterRadius(InOuterRadius); // 写入：OuterRadius
 	}
 }
 
+/**
+ * @brief 写入范围伤害原点
+ * @param EffectContextHandle GE 上下文句柄
+ * @param InOrigin            原点坐标（通常为爆炸中心/命中点）
+ */
 void UAuraAbilitySystemLibrary::SetRadialDamageOrigin(FGameplayEffectContextHandle& EffectContextHandle,
 	const FVector& InOrigin)
 {
 	if (FAuraGameplayEffectContext* AuraEffectContext = static_cast<FAuraGameplayEffectContext*>(EffectContextHandle.Get()))
 	{
-		AuraEffectContext->SetRadialDamageOrigin(InOrigin);
+		AuraEffectContext->SetRadialDamageOrigin(InOrigin); // 写入：Origin
 	}
 }
+
 
 /**
  * 在指定球形区域内检索所有存活的玩家角色，并输出到数组
