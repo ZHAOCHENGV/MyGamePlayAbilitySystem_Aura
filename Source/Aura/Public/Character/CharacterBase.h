@@ -11,7 +11,7 @@
 #include "CharacterBase.generated.h"
 
 
-class UDebuffNiagaraComponent;
+class UDebuffNiagaraComponent; 
 class UNiagaraSystem;
 class UGameplayAbility;
 class UGameplayEffect;
@@ -35,6 +35,7 @@ public:
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 	//获取GAS属性集,直接返回AttributeSet
 	UAttributeSet * GetAttributeSet()const{return AttributeSet;}
+	float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser) override;
 	
 	//多播函数 Death（客户端和服务器都要执行死亡相关逻辑）
 	UFUNCTION(NetMulticast, Reliable)
@@ -81,13 +82,17 @@ public:
 	virtual USkeletalMeshComponent* GetWeapon_Implementation() override;
 
 	virtual void SetIsBeingShocked_Implementation(bool bInShock) override;
+	
 	virtual bool IsBeingShocked_Implementation() const override;
+
+	virtual FOnDamageSignature& GetOnDamageSignature() override;
 	
 	/*Combatinterface接口结束*/
 
 	//当ASC注册时
 	FOnASCRegistered OnAscRegistered;
 	FOnDeathSignature OnDeathDelegate;
+	FOnDamageSignature OnDamageDelegate;
 
 	//攻击蒙太奇数组
 	UPROPERTY(EditAnywhere, Category="Combat")

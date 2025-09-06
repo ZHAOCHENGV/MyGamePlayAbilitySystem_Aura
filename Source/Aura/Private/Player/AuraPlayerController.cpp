@@ -11,6 +11,7 @@
 #include "NavigationSystem.h"
 #include "NiagaraFunctionLibrary.h"
 #include "Actor/MagicCircle.h"
+#include "Aura/Aura.h"
 #include "Components/SplineComponent.h"
 #include "GAS/AuraAbilitySystemComponent.h"
 #include "Input/AuraInputComponent.h"
@@ -235,8 +236,10 @@ void AAuraPlayerController::CursorTrace()
 		ThisActor = nullptr;
 		return;
 	}
+	//当魔法阵有效时，设置 ECC_ExcludePlayers，否则设置ECC_Visibility
+	const ECollisionChannel TraceChannel = IsValid(MagicCircle) ? ECC_ExcludePlayers : ECC_Visibility;
 	//获取光标击中的结果
-	GetHitResultUnderCursor(ECC_Visibility,false,CursorHit);
+	GetHitResultUnderCursor(TraceChannel,false,CursorHit);
 	//如果未击中，则返回
 	if(!CursorHit.bBlockingHit)return;
 	LastActor = ThisActor;

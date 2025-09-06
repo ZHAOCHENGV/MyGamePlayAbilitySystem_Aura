@@ -23,7 +23,16 @@ public:
 
 	//从类默认值创建伤害效果参数
 	UFUNCTION(BlueprintPure)
-	FDamageEffectParams MakeDamageEffectParamsFromClassDefaults(AActor* TargetActor = nullptr) const;
+	FDamageEffectParams MakeDamageEffectParamsFromClassDefaults(
+		AActor* TargetActor = nullptr ,
+		FVector InRadialDamageOrigin = FVector::ZeroVector,
+		bool bOverrideKnockbackDirection = false,
+		FVector KnockbackDirectionOverride = FVector::ZeroVector,
+		bool bOverrideDeathImpulse = false,
+		FVector DeathImpulseDirectionOverride = FVector::ZeroVector,
+		bool bOverridePitch = false,
+		float PitchOverride = 0.0f
+		)const;
 
 	//获取根据等级的上海数值
 	UFUNCTION(BlueprintPure)
@@ -73,17 +82,15 @@ protected:
 	bool bIsRadialDamage = false;
 
 	//径向损伤内半径
-	UPROPERTY(EditDefaultsOnly,  Category = "Damage", meta=(DisplayName="径向损伤内半径"))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Damage", meta=(DisplayName="径向损伤内半径"))
 	float RadialDamageInnerRadius = 0.f;
 
 
 	//径向损伤外半径
-	UPROPERTY(EditDefaultsOnly,  Category = "Damage", meta=(DisplayName="径向损伤外半径"))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Damage", meta=(DisplayName="径向损伤外半径"))
 	float RadialDamageOuterRadius = 0.f;
 
-	//径向损伤原点
-	UPROPERTY(EditDefaultsOnly,  Category = "Damage", meta=(DisplayName="径向损伤原点"))
-	FVector RadialDamageOrigin = FVector::ZeroVector;
+
 	
 	
 	//从数组中随机获取攻击的蒙太奇

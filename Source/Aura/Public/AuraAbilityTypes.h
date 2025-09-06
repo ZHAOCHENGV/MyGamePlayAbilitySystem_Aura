@@ -138,7 +138,7 @@ public:
 	FVector GetKnockBackForce() const {return KnockBackForce;}
 	bool IsRadialDamage() const { return bIsRadialDamage; }
 	float GetRadialDamageOuterRadius() const {return RadialDamageOuterRadius;}
-	float GetRaidDamageInnerRadius() const {return RadialDamageInnerRadius;}
+	float GetRadialDamageInnerRadius() const {return RadialDamageInnerRadius;}
 	FVector GetRadialDamageOrigin() const {return RadialDamageOrigin;}
 
 	void SetIsCriticalHit(bool bInIsCriticalHit) { bIsCriticalHit = bInIsCriticalHit; }

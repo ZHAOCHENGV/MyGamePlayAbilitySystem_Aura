@@ -50,62 +50,119 @@ void UAuraDamageGameplayAbility::CauseDamage(AActor* TargetActor)
 }
 
 /**
- * @brief 从当前技能默认配置生成减益 伤害效果参数结构体
+ * @brief 由本 GA 的“类默认值”生产一次伤害用的参数集（FDamageEffectParams）
  *
- * @param TargetActor 伤害技能的目标Actor（通常是敌人或玩家）
- * @return FDamageEffectParams 结构体，包含所有后续执行伤害GE所需的参数
+ * @param TargetActor                 受击目标（用于计算朝向/击退/死亡冲击方向；可为空则跳过方向推导）
+ * @param InRadialDamageOrigin        范围伤害（Radial）原点位置（仅当 bIsRadialDamage 为 true 时使用）
+ * @param bOverrideKnockbackDirection 是否手动指定击退方向（true=用 KnockbackDirectionOverride；false=自动朝向目标）
+ * @param KnockbackDirectionOverride  手动指定的击退方向（会 Normalize，再乘以 KnockBackForceMagnitude）
+ * @param bOverrideDeathImpulse       是否手动指定死亡冲击方向（true=用 DeathImpulseDirectionOverride）
+ * @param DeathImpulseDirectionOverride 手动指定的死亡冲击方向（会 Normalize，再乘以 DeathImpulseMagnitude）
+ * @param bOverridePitch              是否强制覆盖计算方向的 Pitch（俯仰角）
+ * @param PitchOverride               覆盖用的 Pitch 角度（单位：度）
+ * @return FDamageEffectParams        填充完成的伤害参数集（供 ApplyDamageEffect 等下游统一使用）
  *
  * 功能说明：
- * 本函数用于组装一次伤害技能所需的全部参数，便于后续统一传递和调用。适用于多种伤害相关GE的生成。
+ * - 从本 GA 的 Class 默认配置（伤害/减益/强度等）和运行时传入（目标、方向覆写、范围伤害配置）综合构造一个参数对象；
+ * - 方向类参数有两套来源：自动朝向 TargetActor，或使用外部覆写向量（并可选覆盖 Pitch）；
+ * - 若启用范围伤害（bIsRadialDamage），会附带半径与原点数据。
  *
  * 详细流程：
- * 1. 获取技能释放者（自身）的Actor指针作为上下文（WorldContextObject）。
- * 2. 记录当前技能默认的伤害GE类型。
- * 3. 获取技能释放者和目标的AbilitySystemComponent（ASC），便于后续GE应用。
- * 4. 读取当前技能等级下的基础伤害。
- * 5. 记录技能等级、伤害类型以及所有与减益相关的参数（如概率、数值、持续时间、频率）。
+ * 1) 初始化 Params 并写入“来源/目标 ASC、GE 类、等级、伤害/减益数值”；
+ * 2) 若 TargetActor 有效 → 基于 Avatar→Target 的方向计算击退/死亡冲击（除非被覆写）；
+ * 3) 若设置了覆写方向 → 归一化向量并乘以各自强度，可选再用 PitchOverride 调整朝向；
+ * 4) 若 bIsRadialDamage → 写入范围伤害开关、原点、内外半径；
+ * 5) 返回 Params。
  *
  * 注意事项：
- * - DamageEffectClass、DamageType、Debuff相关参数需在技能蓝图或C++中配置好。
- * - TargetActor 必须能获取到ASC，否则后续GE无法正确应用。
- * - 便于扩展，后续如有新参数可在此结构体和赋值处补充。
+ * - 方向计算分支较多：当 bOverrideX 为 true 时，以覆写方向为准；否则以“指向目标”的向量为准。
+ * - Pitch 覆盖是“后处理”：在自动方向和覆写方向两处都可能应用（注意一致性）。
+ * - 目标 ASC 可能为 nullptr（比如目标无 ASC），下游应用 GE 时需做好判空。
+ * - 范围伤害字段仅在 bIsRadialDamage==true 时有效；建议配合数值表做边界校验（半径>0 等）。
  */
-FDamageEffectParams UAuraDamageGameplayAbility::MakeDamageEffectParamsFromClassDefaults(AActor* TargetActor) const
+FDamageEffectParams UAuraDamageGameplayAbility::MakeDamageEffectParamsFromClassDefaults(
+    AActor* TargetActor,
+    FVector InRadialDamageOrigin, bool bOverrideKnockbackDirection, FVector KnockbackDirectionOverride,
+    bool bOverrideDeathImpulse, FVector DeathImpulseDirectionOverride, bool bOverridePitch, float PitchOverride) const
 {
     FDamageEffectParams Params; // 用于存储所有伤害GE参数的结构体
 
     Params.WorldContextObject = GetAvatarActorFromActorInfo(); // 技能释放者的Actor指针，作为上下文
     Params.DamageGameplayEffectClass = DamageEffectClass; // 当前技能对应的伤害GE类型
     Params.SourceAbilitySystemComponent = GetAbilitySystemComponentFromActorInfo(); // 技能释放者ASC
-    Params.TargetAbilitySystemComponent = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(TargetActor); // 目标的ASC
-    Params.BaseDamage = Damage.GetValueAtLevel(GetAbilityLevel()); // 按当前技能等级查表获取基础伤害
+    Params.TargetAbilitySystemComponent = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(TargetActor); // 目标的ASC（可能为空）
+    Params.BaseDamage = Damage.GetValueAtLevel(GetAbilityLevel()); // 按当前技能等级查表获取基础伤害（FScalableFloat）
     Params.AbilityLevel = GetAbilityLevel(); // 当前技能等级
     Params.DamageType = DamageType; // 伤害类型标签（如物理/火焰/冰冻）
-    Params.DebuffChance = DebuffChance; // 减益（debuff）触发概率
+    Params.DebuffChance = DebuffChance; // 减益触发概率
     Params.DebuffDamage = DebuffDamage; // 减益每跳伤害
     Params.DebuffDuration = DebuffDuration; // 减益持续时间
-    Params.DebuffFrequency = DebuffFrequency; // 减益触发频率
-    Params.DeathImpulseMagnitude = DeathImpulseMagnitude;// 死亡冲击强度
-    Params.KnockBackForceMagnitude = KnockBackForceMagnitude;// 击退力度
-    Params.KnockBackChance = KnockBackChance; //击退几率
+    Params.DebuffFrequency = DebuffFrequency; // 减益触发频率（周期秒）
+    Params.DeathImpulseMagnitude = DeathImpulseMagnitude; // 死亡冲击强度
+    Params.KnockBackForceMagnitude = KnockBackForceMagnitude; // 击退力度
+    Params.KnockBackChance = KnockBackChance; // 击退几率
+
+    // 若目标有效：用“Avatar→Target”的方向作为基础方向（除非后续覆写）
     if (IsValid(TargetActor))
     {
-        FRotator Rotation = (TargetActor->GetActorLocation() - GetAvatarActorFromActorInfo()->GetActorLocation()).Rotation();
-        Rotation.Pitch = 45.f;
-        const FVector ToTarget = Rotation.Vector();
-        Params.DeathImpulse = ToTarget * DeathImpulseMagnitude;
-        Params.KnockBackForce = ToTarget * KnockBackForceMagnitude;
+        FRotator Rotation = (TargetActor->GetActorLocation() - GetAvatarActorFromActorInfo()->GetActorLocation()).Rotation(); // 指向目标的朝向
+        if (bOverridePitch)
+        {
+            Rotation.Pitch = PitchOverride; // 覆盖 Pitch（俯仰角）
+        }
+        const FVector ToTarget = Rotation.Vector(); // 方向向量（单位向量）
+
+        if (!bOverrideKnockbackDirection) // 未覆写击退方向 → 用自动方向
+        {
+            Params.KnockBackForce = ToTarget * KnockBackForceMagnitude; // 击退向量 = 方向 * 强度
+        }
+        if (!bOverrideDeathImpulse) // 未覆写死亡冲击方向 → 用自动方向
+        {
+            Params.DeathImpulse = ToTarget * DeathImpulseMagnitude; // 死亡冲击向量 = 方向 * 强度
+        }
     }
 
+    // 若覆写击退方向：Normalize 后乘以力度；可选再用 Pitch 覆盖
+    if (bOverrideKnockbackDirection)
+    {
+        KnockbackDirectionOverride.Normalize(); // 归一化，防止强度被方向长度影响
+        Params.KnockBackForce = KnockbackDirectionOverride * KnockBackForceMagnitude; // 基础按向量覆写
+
+        if (bOverridePitch)
+        {
+            FRotator KnockbackRotation = KnockbackDirectionOverride.Rotation(); // 从向量转朝向
+            KnockbackRotation.Pitch = PitchOverride; // 覆盖 Pitch
+            Params.KnockBackForce = KnockbackRotation.Vector() * KnockBackForceMagnitude; // 以覆盖后的朝向重新计算向量
+        }
+    }
+
+    // 若覆写死亡冲击方向：Normalize 后乘以强度；可选再用 Pitch 覆盖
+    if (bOverrideDeathImpulse)
+    {
+        DeathImpulseDirectionOverride.Normalize(); // 归一化
+        Params.DeathImpulse = DeathImpulseDirectionOverride * DeathImpulseMagnitude; // 基础按向量覆写
+
+        if (bOverridePitch)
+        {
+            FRotator DeathImpulseRotation = DeathImpulseDirectionOverride.Rotation(); // 从向量转朝向
+            DeathImpulseRotation.Pitch = PitchOverride; // 覆盖 Pitch
+            Params.DeathImpulse = DeathImpulseRotation.Vector() * KnockBackForceMagnitude; // 用 Pitch 后的朝向*（此处乘以 KnockBack 力度；见下方“潜在笔误”）
+        }
+    }
+
+    // 若启用范围伤害：写入相关参数
     if (bIsRadialDamage)
     {
-        Params.bIsRadialDamage = bIsRadialDamage;
-        Params.RadialDamageOrigin = RadialDamageOrigin;
-        Params.RadialDamageInnerRadius = RadialDamageInnerRadius;
-        Params.RadialDamageOuterRadius = RadialDamageOuterRadius;
+        Params.bIsRadialDamage = bIsRadialDamage; // 标记启用范围伤害
+        Params.RadialDamageOrigin = InRadialDamageOrigin; // 原点（通常是命中点/投射物爆炸点）
+        Params.RadialDamageInnerRadius = RadialDamageInnerRadius; // 内半径（满额伤害区）
+        Params.RadialDamageOuterRadius = RadialDamageOuterRadius; // 外半径（衰减到 0 的边界）
     }
+
     return Params; // 返回完整参数结构体，便于后续统一使用
 }
+
+
 
 float UAuraDamageGameplayAbility::GetDamageAtLevel() const
 {

@@ -63,6 +63,15 @@ UAbilitySystemComponent* ACharacterBase::GetAbilitySystemComponent() const
 	return AbilitySystemComponent;
 }
 
+float ACharacterBase::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent,class AController* EventInstigator, AActor* DamageCauser)
+{
+	
+	const float DamageTake = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+	OnDamageDelegate.Broadcast(DamageTake);
+	return DamageTake;
+	
+}
+
 void ACharacterBase::Die()
 {
 	// 将角色的武器从其附着的组件上分离
@@ -140,6 +149,11 @@ void ACharacterBase::SetIsBeingShocked_Implementation(bool bInShock)
 bool ACharacterBase::IsBeingShocked_Implementation() const
 {
 	return bIsBeingShocked;
+}
+
+FOnDamageSignature& ACharacterBase::GetOnDamageSignature()
+{
+	return OnDamageDelegate;
 }
 
 

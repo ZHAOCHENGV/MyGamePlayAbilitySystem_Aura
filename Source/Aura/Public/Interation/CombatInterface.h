@@ -14,6 +14,7 @@ class UNiagaraSystem;
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnASCRegistered, UAbilitySystemComponent*);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDeathSignature, AActor*, DeadActor);
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnDamageSignature, float /*伤害值*/);
 
 USTRUCT(BlueprintType)
 struct FTaggedMontage
@@ -106,6 +107,8 @@ public:
 	virtual FOnASCRegistered& GetOnASCRegisteredDelegate() = 0 ;
 	//死亡委托
 	virtual FOnDeathSignature& GetOnDeathSignatureDelegate() = 0;
+	//获得伤害值
+	virtual FOnDamageSignature& GetOnDamageSignature() = 0;
 	
 	//设置在晕眩状态中
 	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
