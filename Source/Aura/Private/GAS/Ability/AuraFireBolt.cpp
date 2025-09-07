@@ -55,6 +55,7 @@ FString UAuraFireBolt::GetDescription(int32 Level)
 			Cooldown,
 			ScaleDamage);
 	}
+	else {
 		return FString::Printf(TEXT(
 			"<Title>火焰箭</>\n\n"
 			"<Small>等级: %d</>\n"
@@ -68,6 +69,7 @@ FString UAuraFireBolt::GetDescription(int32 Level)
 			Cooldown,
 			FMath::Min(Level,NumProjectiles),
 			ScaleDamage);
+	}
 }
 
 /**

@@ -487,15 +487,6 @@ void UAuraAbilitySystemLibrary::SetIsBlockedHit(FGameplayEffectContextHandle& Ef
 	}
 }
 
-void UAuraAbilitySystemLibrary::SetIsCriticalHit(FGameplayEffectContextHandle& EffectContextHandle,bool bInIsCriticalHit)
-{
-	// 尝试将传入的 EffectContextHandle 转换为 FAuraGameplayEffectContext 指针
-	if (FAuraGameplayEffectContext* AuraEffectContext = static_cast<FAuraGameplayEffectContext*>(EffectContextHandle.Get()))
-	{
-		// 如果转换成功，则调用 SetIsCriticalHit() 方法设置暴击状态
-		 AuraEffectContext->SetIsCriticalHit(bInIsCriticalHit);
-	}
-}
 
 /**
  * @brief 在 EffectContext 中写入“是否暴击”

@@ -130,29 +130,62 @@ void UAuraBeamSpell::TraceFirstTarget(const FVector& BeamTargetLocation)
 	}
 }
 
+/**
+ * @brief 采集“额外链对象”（附加目标）：在鼠标命中点附近筛选候选单位，取最近的 N 个并注册“死亡回调”
+ *
+ * @param OutAdditionalTargets 输出：最终挑选出的附加目标数组（按距离从近到远）
+ *
+ * 功能说明：
+ * - 以鼠标命中目标 MouseHitActor 为中心，半径 850cm 搜“活着的玩家/敌人”（排除自身与命中者）；
+ * - 依据技能等级与上限 MaxNumShockTargets，选出最多 N = min(AbilityLevel-1, MaxNumShockTargets) 个最近单位；
+ * - 为每个附加目标尝试绑定“死亡事件回调”，以便目标死亡时断开电弧/清理效果。
+ *
+ * 详细流程：
+ * 1) 组建忽略列表（自身、命中者）；2) Overlap 搜索存入 OverlappingActors；
+ * 3) 计算 N（等级-1 与上限取小）；4) 以命中点为原点，从 OverlappingActors 中筛出“最近 N 个”到 OutAdditionalTargets；
+ * 5) 遍历 OutAdditionalTargets，为其绑定“死亡回调”（避免重复绑定）。
+ *
+ * 注意事项：
+ * - 当 AbilityLevel==1 时，N=0，无附加目标；若等级可能小于 1，需额外 Clamp 以防负数。
+ * - 本函数假设 MouseHitActor 有效；若可能为空，使用前应判空或早退。
+ * - 当前绑定回调时对 MouseHitActor 进行了 Cast（而不是对循环中的 Target），逻辑上可能有误（见文末“建议 1”）。
+ */
 void UAuraBeamSpell::StoreAdditionalTargets(TArray<AActor*>& OutAdditionalTargets)
 {
+	// 步骤 1：忽略列表——把“自己”和“第一目标（鼠标命中者）”加入忽略，避免被筛进附加目标
 	TArray<AActor*> ActorsToIgnore;
-	ActorsToIgnore.Add(GetAvatarActorFromActorInfo());
-	ActorsToIgnore.Add(MouseHitActor);
+	ActorsToIgnore.Add(GetAvatarActorFromActorInfo());                    // 忽略施法者自身
+	ActorsToIgnore.Add(MouseHitActor);                                    // 忽略第一击中的对象
 
+	// 步骤 2：在命中点附近收集“活体单位”候选（已过滤忽略对象）
 	TArray<AActor*> OverlappingActors;
 	UAuraAbilitySystemLibrary::GetLivePlayersWithinRadius(
-		GetAvatarActorFromActorInfo(),
-		OverlappingActors,
-		ActorsToIgnore,
-		850.f,
-		MouseHitActor->GetActorLocation()
-		);
+		GetAvatarActorFromActorInfo(),                                     // World/上下文（或作为查询者）
+		OverlappingActors,                                                 // 输出：候选列表
+		ActorsToIgnore,                                                    // 输入：忽略对象
+		850.f,                                                             // 半径
+		MouseHitActor->GetActorLocation()                                  // 圆心：命中对象的位置
+	);
 
+	// 步骤 3：计算“需要的附加目标数” = min(能力等级-1, 系统上限)
 	int32 NumAdditionTargets = FMath::Min(GetAbilityLevel() - 1, MaxNumShockTargets);
-	//int32 NumAdditionTargets = 5;
-	UAuraAbilitySystemLibrary::GetClosestTargets(NumAdditionTargets, OverlappingActors, OutAdditionalTargets, MouseHitActor->GetActorLocation());
+	// int32 NumAdditionTargets = 5;                                       // 旧的固定写法（注释保留用于对照）
 
+	// 步骤 4：从候选里挑出“距离命中点最近”的 N 个单位
+	UAuraAbilitySystemLibrary::GetClosestTargets(
+		NumAdditionTargets,                                                // 需要的目标数
+		OverlappingActors,                                                 // 候选池
+		OutAdditionalTargets,                                              // 输出：最终附加目标
+		MouseHitActor->GetActorLocation()                                  // 参考原点：命中点
+	);
+
+	// 步骤 5：为每个附加目标绑定“死亡回调”，用于链路断开/清理
 	for (AActor* Target : OutAdditionalTargets)
 	{
+		// ⚠ 这里对 MouseHitActor 做了 Cast，而不是对 Target；通常应对 “Target” 进行绑定（见“建议 1”）
 		if (ICombatInterface* CombatInterface = Cast<ICombatInterface>(MouseHitActor))
 		{
+			// 若未绑定过则绑定，避免重复
 			if (!CombatInterface->GetOnDeathSignatureDelegate().IsAlreadyBound(this, &UAuraBeamSpell::AdditionalTargetDied))
 			{
 				CombatInterface->GetOnDeathSignatureDelegate().AddDynamic(this, &UAuraBeamSpell::AdditionalTargetDied);
@@ -160,4 +193,5 @@ void UAuraBeamSpell::StoreAdditionalTargets(TArray<AActor*>& OutAdditionalTarget
 		}
 	}
 }
+
 

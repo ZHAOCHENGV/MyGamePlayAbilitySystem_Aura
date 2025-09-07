@@ -32,13 +32,14 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void StoreAdditionalTargets(TArray<AActor*>& OutAdditionalTargets);
 
+	
 	UFUNCTION(BlueprintImplementableEvent)
 	void PirmaryTargetDied(AActor* DeadActor);
 
 	UFUNCTION(BlueprintImplementableEvent)
 	void AdditionalTargetDied(AActor* DeadActor);
 
-
+	
 protected:
 
 	//光标命中位置
