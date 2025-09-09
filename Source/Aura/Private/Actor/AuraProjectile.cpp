@@ -74,6 +74,21 @@ void AAuraProjectile::Destroyed()
 	Super::Destroyed();
 }
 
+/*
+ * 是否是有效的重叠
+ */
+bool AAuraProjectile::IsValidOverlap(AActor* OtherActor)
+{
+	if (DamageEffectParams.SourceAbilitySystemComponent == nullptr)return false;
+	// 伤害来源Avatar（用于自伤过滤与阵营判定）
+	AActor* SourceAvatarActor = DamageEffectParams.SourceAbilitySystemComponent->GetAvatarActor();
+	// 忽略命中自身（投射物持有者）
+	if (SourceAvatarActor == OtherActor) return false;
+	// 阵营过滤：非敌对则直接返回
+	if (!UAuraAbilitySystemLibrary::IsNotFriend(SourceAvatarActor, OtherActor)) return false;
+	return true;
+}
+
 /**
  * @brief 投射物重叠回调：敌我过滤、触发命中表现，并在服务器侧应用伤害
  *
@@ -97,15 +112,7 @@ void AAuraProjectile::Destroyed()
  */
 void AAuraProjectile::OnSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	if (DamageEffectParams.SourceAbilitySystemComponent == nullptr)return;
-	// 伤害来源Avatar（用于自伤过滤与阵营判定）
-	AActor* SourceAvatarActor = DamageEffectParams.SourceAbilitySystemComponent->GetAvatarActor();
-
-	// 忽略命中自身（投射物持有者）
-	if (SourceAvatarActor == OtherActor) return;
-
-	// 阵营过滤：非敌对则直接返回
-	if (!UAuraAbilitySystemLibrary::IsNotFriend(SourceAvatarActor, OtherActor)) return;
+	if (!IsValidOverlap(OtherActor)) return;
 
 	// 首次命中触发表现（如爆炸/停飞），避免未命中时多次播放
 	if (!bHit) OnHit();

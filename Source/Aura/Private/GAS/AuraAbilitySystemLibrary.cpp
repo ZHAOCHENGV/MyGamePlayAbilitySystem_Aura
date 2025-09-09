@@ -1004,8 +1004,140 @@ void UAuraAbilitySystemLibrary::GetClosestTargets(int32 MaxTargets, const TArray
 		// 已选数量 +1
 		++NumTargetsFound;
 	}
-} 
+}
 
+
+/**
+ * @brief 设置伤害效果参数结构体中的范围伤害（Radial Damage）相关数据。
+ *
+ * @param DamageEffectParams [in/out] 需要被修改的伤害效果参数结构体实例。注意是引用传递。
+ * @param bIsRadial 是否启用范围伤害。
+ * @param InnerRadius 范围伤害的内圈半径，在此半径内造成100%伤害。
+ * @param OuterRadius 范围伤害的外圈半径，在此半径外不造成伤害，内外圈之间伤害会线性衰减。
+ * @param Origin 范围伤害的球心（爆炸中心点）。
+ *
+ * @par 功能说明
+ * 这是一个工具函数（Helper Function），旨在简化设置 FDamageEffectParams 结构体中与范围伤害相关的多个变量的过程。
+ * 通过调用一个函数来代替四次单独的赋值操作，可以使代码更整洁、易读，并减少因遗漏某个参数而导致的错误。
+ *
+ * @par 详细流程
+ * 1.  将 `bIsRadial` 的值赋给 `DamageEffectParams.bIsRadialDamage`。
+ * 2.  将 `InnerRadius` 的值赋给 `DamageEffectParams.RadialDamageInnerRadius`。
+ * 3.  将 `OuterRadius` 的值赋给 `DamageEffectParams.RadialDamageOuterRadius`。
+ * 4.  将 `Origin` 的值赋给 `DamageEffectParams.RadialDamageOrigin`。
+ *
+ * @par 注意事项
+ * - 此函数是静态（static）函数，意味着你可以直接通过类名调用（`UAuraAbilitySystemLibrary::SetIsRadialDamageEffectParam(...)`），无需创建类的实例。
+ * - `DamageEffectParams` 参数是通过引用（&）传递的，因此函数内部的修改会直接影响到调用方传入的原始变量。
+ */
+void UAuraAbilitySystemLibrary::SetIsRadialDamageEffectParam(FDamageEffectParams& DamageEffectParams, bool bIsRadial,  float InnerRadius, float OuterRadius, FVector Origin)
+{
+	DamageEffectParams.bIsRadialDamage  = bIsRadial; // 设置是否为范围伤害的标志位。
+	DamageEffectParams.RadialDamageInnerRadius = InnerRadius; // 设置内圈半径。
+	DamageEffectParams.RadialDamageOuterRadius = OuterRadius; // 设置外圈半径。
+	DamageEffectParams.RadialDamageOrigin = Origin; // 设置伤害的中心点。
+}
+
+
+/**
+ * @brief 设置伤害效果参数中的击退力（Knockback）方向和大小。
+ *
+ * @param DamageEffectParams [in/out] 需要被修改的伤害效果参数结构体实例。
+ * @param KnockbackDirection 击退力的方向向量。函数内部会将其归一化。
+ * @param Magnitude 击退力的大小（力度）。如果为0，则使用参数结构体中预设的默认值。
+ *
+ * @par 功能说明
+ * 该工具函数用于计算并设置最终的击退力向量（FVector）。它通过组合一个方向和大小来生成这个向量，
+ * 并提供了一个方便的逻辑：当不指定力度大小时，可以使用一个默认的力度值。
+ *
+ * @par 详细流程
+ * 1.  **归一化方向**：调用 `KnockbackDirection.Normalize()`，将方向向量的长度变为1，确保只使用其方向信息。
+ * 2.  **判断力度大小**：检查传入的 `Magnitude` 是否为 0。
+ * 3.  **计算最终向量**：
+ *     - 如果 `Magnitude` 为 0，则使用 `DamageEffectParams.KnockBackForceMagnitude` 作为力度大小。
+ *     - 否则，直接使用传入的 `Magnitude`。
+ *     - 将归一化后的方向向量与选定的力度大小相乘，得到最终的 `KnockBackForce` 向量并赋值。
+ *
+ * @par 注意事项
+ * - 传入的 `KnockbackDirection` 向量的原始长度会被忽略，因为函数会对其进行归一化处理。
+ * - 这是一个很实用的设计，允许技能在蓝图或代码中灵活地覆盖默认击退力度，或者直接使用预设值。
+ */
+void UAuraAbilitySystemLibrary::SetKnockbackDirection(FDamageEffectParams& DamageEffectParams,
+	FVector KnockbackDirection, float Magnitude)
+{
+	// (为什么这么做): 归一化（Normalize）操作会把向量的长度变为1，但方向保持不变。
+	// 这样可以确保我们施加的力完全由 Magnitude 控制，而不会受到传入向量初始长度的影响。
+	KnockbackDirection.Normalize();
+	// 如果调用者未指定 Magnitude (传入0.f)，则使用结构体中定义的默认击退力度。
+	if (Magnitude == 0.f)
+	{
+		DamageEffectParams.KnockBackForce = KnockbackDirection * DamageEffectParams.KnockBackForceMagnitude;
+	}
+	// 否则，使用调用者传入的 Magnitude 值。
+	else
+	{
+		DamageEffectParams.KnockBackForce = KnockbackDirection * Magnitude;
+	}
+	
+}
+
+
+/**
+ * @brief 设置伤害效果参数中的死亡冲击力（Death Impulse）方向和大小。
+ *
+ * @param DamageEffectParams [in/out] 需要被修改的伤害效果参数结构体实例。
+ * @param ImpulseDirection 冲击力的方向向量。函数内部会将其归一化。
+ * @param Magnitude 冲击力的大小。如果为0，则使用参数结构体中预设的默认值。
+ *
+ * @par 功能说明
+ * 与 `SetKnockbackDirection` 非常相似，此函数专门用于设置角色死亡时施加的物理冲击力。
+ * 这种力通常用于制作布娃娃（Ragdoll）效果，让角色被击飞得更具戏剧性。
+ *
+ * @par 详细流程
+ * 1.  **归一化方向**：调用 `ImpulseDirection.Normalize()`，移除向量的长度信息，只保留方向。
+ * 2.  **判断力度大小**：检查 `Magnitude` 是否为 0。
+ * 3.  **计算最终向量**：
+ *     - 如果 `Magnitude` 为 0，使用结构体中预设的 `DeathImpulseMagnitude`。
+ *     - 否则，使用传入的 `Magnitude`。
+ *     - 将归一化方向和力度相乘，得到最终的 `DeathImpulse` 向量并赋值。
+ */
+void UAuraAbilitySystemLibrary::SetDeathImpulseDirection(FDamageEffectParams& DamageEffectParams,
+	FVector ImpulseDirection, float Magnitude)
+{
+	// 同样，对方向向量进行归一化，以精确控制冲击力大小。
+	ImpulseDirection.Normalize();
+	// 如果未提供 Magnitude，则使用结构体中定义的默认死亡冲击力。
+	if (Magnitude == 0.f)
+	{
+		DamageEffectParams.DeathImpulse = ImpulseDirection * DamageEffectParams.DeathImpulseMagnitude;	
+	}
+	// 否则，使用传入的 Magnitude 值。
+	else
+	{
+		DamageEffectParams.DeathImpulse = ImpulseDirection * Magnitude;
+	}
+	
+}
+
+/**
+ * @brief 设置伤害效果参数的目标 ASC（Ability System Component）。
+ *
+ * @param DamageEffectParams [in/out] 需要被修改的伤害效果参数结构体实例。
+ * @param InASC 要设置为目标的 ASC 指针。
+ *
+ * @par 功能说明
+ * 一个极其简单的 setter 函数，专门用于将目标单位的 AbilitySystemComponent (ASC - 游戏能力系统组件) 指针存入伤害参数中。
+ * 将这个操作封装成函数可以保持 API 的一致性。
+ *
+ * @par 详细流程
+ * 1.  将 `InASC` 指针赋值给 `DamageEffectParams.TargetAbilitySystemComponent`。
+ */
+void UAuraAbilitySystemLibrary::SetTargetEffectParamsASC(FDamageEffectParams& DamageEffectParams,
+	UAbilitySystemComponent* InASC)
+{
+	// 将目标的 ASC 存入参数结构体，后续应用 GE 时会用到。
+	DamageEffectParams.TargetAbilitySystemComponent = InASC;
+}
 
 
 /**

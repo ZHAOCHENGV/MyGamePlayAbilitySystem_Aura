@@ -41,18 +41,24 @@ public:
 protected:
 	virtual void BeginPlay() override;
 	UFUNCTION(BlueprintCallable)
-	void OnHit();
+	virtual void OnHit();
 	virtual void Destroyed() override;
+	bool IsValidOverlap(AActor* OtherActor);
 	UFUNCTION()
 	virtual void OnSphereOverlap(UPrimitiveComponent * OverlappedComponent, AActor * OtherActor, UPrimitiveComponent * OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult);
+	//击中？
+	bool bHit = false;
+	
+	//循环音效组件
+	UPROPERTY()
+	TObjectPtr<UAudioComponent> LoopingSoundComponent;
 
 private:
 	//生命周期
 	UPROPERTY(EditDefaultsOnly)
 	float LifeSpan = 15.f;
 
-	//击中？
-	bool bHit = false;
+
 
 	
 	//击中特效
@@ -64,8 +70,5 @@ private:
 	//循环声音
 	UPROPERTY(EditAnywhere)
 	TObjectPtr<USoundBase> LoopingSound;
-	//循环音效组件
-	UPROPERTY()
-	TObjectPtr<UAudioComponent> LoopingSoundComponent;
-
+	
 };

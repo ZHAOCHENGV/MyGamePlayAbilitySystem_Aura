@@ -109,6 +109,8 @@ TArray<AAuraFireBall*> UAuraFireBlast::SpawnFireBalls()
 		// 设置“归返对象”（若 FireBall 需要回到施法者或跟随其位置）                
 		FireBall->ReturnToActor = GetAvatarActorFromActorInfo();
 
+		FireBall->ExplosionDamageParams = MakeDamageEffectParamsFromClassDefaults();
+		FireBall->SetOwner(GetAvatarActorFromActorInfo());
 		// 收集到结果数组（此时对象已 spawn 但尚未 FinishSpawning）               
 		FireBalls.Add(FireBall);
 

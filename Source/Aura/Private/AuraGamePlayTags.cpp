@@ -263,4 +263,10 @@ FString(TEXT("被动技能：法力摄取")));
 	FString(TEXT("阻止输入按下")));
 	GamePlayTags.Player_Block_InputReleased= UGameplayTagsManager::Get().AddNativeGameplayTag(FName("Player.Block.InputReleased"),
 	FString(TEXT("阻止鼠标已释放")));
+
+	/*
+	 * 游戏提示
+	 */
+	GamePlayTags.GameplayCue_FireBlast= UGameplayTagsManager::Get().AddNativeGameplayTag(FName("GameplayCue.FireBlast"),
+	FString(TEXT("游戏提示：火焰爆发")));
 }

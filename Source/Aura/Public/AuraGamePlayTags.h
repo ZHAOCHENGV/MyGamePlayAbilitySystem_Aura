@@ -199,6 +199,11 @@ public:
 	FGameplayTag Player_Block_InputHeld;
 	FGameplayTag Player_Block_InputReleased;
 	FGameplayTag Player_Block_CursorTrace;
+
+	/*
+	 * 游戏提示
+	 */
+	FGameplayTag GameplayCue_FireBlast;
 	
 private:
 	// 定义静态变量用于存储游戏标签
