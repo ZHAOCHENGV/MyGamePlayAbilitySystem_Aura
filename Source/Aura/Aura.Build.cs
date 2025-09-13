@@ -12,12 +12,11 @@ public class Aura : ModuleRules
 
 		PrivateDependencyModuleNames.AddRange(new string[] { "GameplayTags","GameplayTasks","NavigationSystem","Niagara","AIModule" });
 
-		// Uncomment if you are using Slate UI
+		// 取消注释（如果使用的是Slate UI）
 		// PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore" });
 		
-		// Uncomment if you are using online features
+		// 如果您正在使用联机功能，请取消注释
 		// PrivateDependencyModuleNames.Add("OnlineSubsystem");
-
 		// To include OnlineSubsystemSteam, add it to the plugins section in your uproject file with the Enabled attribute set to true
 	}
 }
