@@ -5,7 +5,8 @@
 
 void UMVVM_LoadSlot::InitializeSlot()
 {
-	SetWidgetSwitcherIndex.Broadcast(1);
+	const int32 WidgetSwitcherIndex = SlotStatus.GetValue();
+	SetWidgetSwitcherIndex.Broadcast(WidgetSwitcherIndex);
 }
 
 
@@ -36,4 +37,14 @@ void UMVVM_LoadSlot::SetLoadSlotName(FString InLoadSlotName)
 	// 这个宏会先检查 InLoadSlotName 是否与当前的 LoadSlotName 相同，如果不同，才会赋值并广播通知。
 	// 这样做可以避免不必要的 UI 刷新和潜在的无限循环。
 	UE_MVVM_SET_PROPERTY_VALUE(LoadSlotName, InLoadSlotName);
+}
+
+void UMVVM_LoadSlot::SetPlayerName(FString InPlayerName)
+{
+	UE_MVVM_SET_PROPERTY_VALUE(PlayerName, InPlayerName);
+}
+
+void UMVVM_LoadSlot::SetMapName(FString InMapName)
+{
+	UE_MVVM_SET_PROPERTY_VALUE(MapName, InMapName);
 }
