@@ -25,10 +25,13 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category="=Ability Info")
 	TObjectPtr<UAbilityInfo> AbilityInfo;
 
-	//保存插槽数据
+	//保存存档数据
 	void SaveSlotData(UMVVM_LoadSlot* LoadSlot, int32 SlotIndex);
 
+	//获取保存游戏数据
 	ULoadScreenSaveGame* GetSaveSlotData(const FString& SlotName, int32 SlotIndex) const;
+
+	//删除保存数据
 	static void DeleteSlot(const FString& SlotName, int32 SlotIndex);
 
 	
@@ -44,6 +47,7 @@ public:
 	UPROPERTY(EditDefaultsOnly)
 	TMap<FString, TSoftObjectPtr<UWorld>> Maps;
 
+	//打开地图
 	void TravelToMap(UMVVM_LoadSlot* Slot);
 
 protected:

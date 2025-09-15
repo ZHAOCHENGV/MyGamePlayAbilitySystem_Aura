@@ -24,18 +24,23 @@ class AURA_API ULoadScreenSaveGame : public USaveGame
 	GENERATED_BODY()
 
 public:
+	//插槽名称
 	UPROPERTY()
 	FString SlotName = FString();
 
+	//插槽索引
 	UPROPERTY()
 	int32 SlotIndex = 0;
 
+	//玩家名称
 	UPROPERTY()
 	FString PlayerName = FString("Default Name");
-	
+
+	//地图名称
 	UPROPERTY()
 	FString MapName = FString("Default Map Name");
 
+	//存档槽状态
 	UPROPERTY()
 	TEnumAsByte<ESaveSlotStatus> SaveSlotStatus = Vacant;
 	

@@ -28,17 +28,23 @@ public:
 	UPROPERTY()
 	TEnumAsByte<ESaveSlotStatus> SlotStatus;
 
+	//初始化槽位
 	void InitializeSlot();
 
 	UPROPERTY()
 	int32 SlotIndex;
 
+	//设置加载槽名称
 	void SetLoadSlotName(FString InLoadSlotName);
+	//设置玩家名称
 	void SetPlayerName(FString InPlayerName);
+	//设置地图名称
 	void SetMapName(FString InMapName);
-	
+	//获取加载槽名称
 	FString GetLoadSlotName() const {return LoadSlotName;};
+	//获取玩家名称
 	FString GetPlayerName() const {return PlayerName;};
+	//获取地图名称
 	FString GetMapName() const {return MapName;};
 
 private:
