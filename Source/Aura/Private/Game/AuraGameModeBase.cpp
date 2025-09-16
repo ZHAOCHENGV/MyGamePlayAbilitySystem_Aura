@@ -3,7 +3,9 @@
 
 #include "Game/AuraGameModeBase.h"
 
+#include "Game/AuraGameInstance.h"
 #include "Game/LoadScreenSaveGame.h"
+#include "GameFramework/PlayerStart.h"
 #include "Kismet/GameplayStatics.h"
 #include "UI/ViewModel/MVVM_LoadSlot.h"
 
@@ -39,6 +41,7 @@ void AAuraGameModeBase::SaveSlotData(UMVVM_LoadSlot* LoadSlot, int32 SlotIndex)
 	LoadScreenSaveGame->PlayerName = LoadSlot->GetPlayerName();
 	LoadScreenSaveGame->MapName = LoadSlot->GetMapName();
 	LoadScreenSaveGame->SaveSlotStatus = Taken; // 将存档状态标记为“已占用”。
+	LoadScreenSaveGame->PlayerStartTag = LoadSlot->PlayerStartTag;
 	// 调用引擎的静态函数，将内存中的存档对象写入到磁盘。文件名由 SlotName 和 SlotIndex 共同决定。
 	UGameplayStatics::SaveGameToSlot(LoadScreenSaveGame, LoadSlot->GetLoadSlotName(), SlotIndex);
 }
@@ -105,9 +108,35 @@ void AAuraGameModeBase::TravelToMap(UMVVM_LoadSlot* Slot)
 
 	// 从 ViewModel 获取地图名，然后用这个名字作为 Key 在 Maps TMap 中查找对应的地图资源引用。
 	// FindChecked 会在找不到 Key 时使程序崩溃，确保了地图名必须是有效的。
-	// Maps 是一个 TMap<FString, TSoftObjectPtr<UWorld>>，存储着地图名到地图资源的映射。
+	// Maps 是一个 TMap<FString, TSoftObjectPtr<UWorld>>，存储着地图名 到地图资源的映射。
 	// TSoftObjectPtr 是一个“软”引用，它只存储资源的路径，不会在加载时将资源一直保留在内存中。
 	UGameplayStatics::OpenLevelBySoftObjectPtr(Slot, Maps.FindChecked(Slot->GetMapName()));
+}
+
+AActor* AAuraGameModeBase::ChoosePlayerStart_Implementation(AController* Player)
+{
+
+	UAuraGameInstance* AuraGameInstance = Cast<UAuraGameInstance>(GetGameInstance());
+	TArray<AActor*> Actors;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), APlayerStart::StaticClass(), Actors);
+	if (Actors.Num() > 0)
+	{
+		AActor* SelectedActor = Actors[0];
+		for (AActor* Actor : Actors)
+		{
+			if (APlayerStart* PlayerStart = Cast<APlayerStart>(Actor))
+			{
+				if (PlayerStart->PlayerStartTag == AuraGameInstance->PlayerStartTag)
+				{
+					SelectedActor = PlayerStart;
+					break;
+				}
+				
+			}
+		}
+		return SelectedActor;
+	}
+	return nullptr;
 }
 
 /**

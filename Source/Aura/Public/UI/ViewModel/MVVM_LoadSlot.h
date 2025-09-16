@@ -34,6 +34,9 @@ public:
 	UPROPERTY()
 	int32 SlotIndex;
 
+	UPROPERTY()
+	FName PlayerStartTag;
+
 	//设置加载槽名称
 	void SetLoadSlotName(FString InLoadSlotName);
 	//设置玩家名称

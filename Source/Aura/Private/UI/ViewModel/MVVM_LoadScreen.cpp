@@ -3,6 +3,7 @@
 
 #include "UI/ViewModel/MVVM_LoadScreen.h"
 
+#include "Game/AuraGameInstance.h"
 #include "Game/AuraGameModeBase.h"
 #include "Kismet/GameplayStatics.h"
 #include "UI/ViewModel/MVVM_LoadSlot.h"
@@ -89,9 +90,16 @@ void UMVVM_LoadScreen::NewSlotButtonPressed(int32 Slot, const FString& EnteredNa
 		// 步骤 2/2: 更新 ViewModel 并请求保存
 		LoadSlots[Slot]->SetMapName(AuraGameMode->DefaultMapName);// 从 GameMode 获取默认地图名并设置到 ViewModel。
 		LoadSlots[Slot]->SetPlayerName(EnteredName);// 将玩家输入的名字设置到 ViewModel。
-		AuraGameMode->SaveSlotData(LoadSlots[Slot], Slot);// 调用 GameMode 的功能，传入 ViewModel 和槽位索引来执行实际的存档操作。
 		LoadSlots[Slot]->SlotStatus = Taken;// 更新 ViewModel 的内部状态为“已占用”。
+		LoadSlots[Slot]->PlayerStartTag = AuraGameMode->DefaultPlayerStartTag;
+		
+		AuraGameMode->SaveSlotData(LoadSlots[Slot], Slot);// 调用 GameMode 的功能，传入 ViewModel 和槽位索引来执行实际的存档操作。
 		LoadSlots[Slot]->InitializeSlot();// 通知该槽位根据新状态刷新其 UI。
+		
+		UAuraGameInstance* AuraGameInstance = Cast<UAuraGameInstance>(AuraGameMode->GetGameInstance());
+		AuraGameInstance->PlayerStartTag = AuraGameMode->DefaultPlayerStartTag;
+		AuraGameInstance->LoadSlotName = LoadSlots[Slot]->GetLoadSlotName();
+		AuraGameInstance->LoadSlotIndex = LoadSlots[Slot]->SlotIndex;
 	}
 }
 
@@ -172,7 +180,7 @@ void UMVVM_LoadScreen::LoadData()
 		LoadSlot.Value->SlotStatus = SaveSlotStatus;
 		LoadSlot.Value->SetPlayerName(SaveObject->PlayerName);
 		LoadSlot.Value->SetMapName(SaveObject->MapName);
-
+		LoadSlot.Value->PlayerStartTag = SaveObject->PlayerStartTag;
 		// 根据加载的数据刷新槽位 UI
 		LoadSlot.Value->InitializeSlot();
 	}
@@ -207,6 +215,8 @@ void UMVVM_LoadScreen::DelectButtonPressed()
 void UMVVM_LoadScreen::PlayButtonPressed()
 {
 	AAuraGameModeBase* AuraGameMode = Cast<AAuraGameModeBase>(UGameplayStatics::GetGameMode(this));
+	UAuraGameInstance* AuraGameInstance = Cast<UAuraGameInstance>(AuraGameMode->GetGameInstance());
+	AuraGameInstance->PlayerStartTag = SelectedSlot->PlayerStartTag;
 	// 再次检查 SelectedSlot 是否有效，这是一个很好的防御性编程习惯。
 	if (IsValid(SelectedSlot) && AuraGameMode)
 	{
