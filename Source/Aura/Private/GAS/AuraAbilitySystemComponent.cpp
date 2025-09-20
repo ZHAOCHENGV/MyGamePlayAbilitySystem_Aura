@@ -6,6 +6,7 @@
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AuraGamePlayTags.h"
 #include "Aura/AuraLogChannels.h"
+#include "Game/LoadScreenSaveGame.h"
 #include "GAS/AuraAbilitySystemLibrary.h"
 #include "GAS/Ability/AuraGameplayAbility.h"
 #include "GAS/Data/AbilityInfo.h"
@@ -20,6 +21,89 @@ void UAuraAbilitySystemComponent::AbilityActorInfoSet()
 
 	const FAuraGamePlayTags & GamePlayTags = FAuraGamePlayTags::Get();
 	//GEngine->AddOnScreenDebugMessage(-1, 5.0, FColor::Red, FString::Printf(TEXT("标签：%s"),*GamePlayTags.Attributes_Secondary_Armor.ToString()));
+}
+
+
+/**
+ * @brief 从一个存档对象 (SaveData) 中读取技能数据，并在当前 ASC 上重新授予这些技能。
+ * @param SaveData 包含已保存技能信息的 ULoadScreenSaveGame 对象。
+ *
+ * @par 功能说明
+ * 该函数负责在游戏加载时恢复玩家角色的所有技能。它会遍历存档数据中的每一个技能记录，
+ * 根据记录的信息（技能类型、等级、槽位、状态等）重新构建一个 FGameplayAbilitySpec (技能规格)，
+ * 并通过 `GiveAbility` 系列函数将其授予给当前的 ASC (Ability System Component)。
+ * 这个函数特别处理了主动技能和被动技能的不同授予方式。
+ *
+ * @par 详细流程
+ * 1.  **遍历存档技能**: 循环遍历 `SaveData` 中存储的 `SavedAbilities` 数组。
+ * 2.  **构建 AbilitySpec**:
+ *     - 从存档数据中获取技能的类 (`UGameplayAbility`) 和等级。
+ *     - 使用这些信息创建一个 `FGameplayAbilitySpec`。Spec 是一个技能在 ASC 内部的“实例”，包含了该技能的所有运行时数据。
+ * 3.  **恢复动态标签**: 将存档中记录的技能槽位（Slot）和状态（Status）作为动态标签（Dynamic Tags）添加回 Spec 中。
+ * 4.  **区分技能类型**:
+ *     - **主动技能 (Offensive)**: 直接调用 `GiveAbility()` 授予技能。
+ *     - **被动技能 (Passive)**:
+ *       - 如果存档时该技能是“已装备”状态，则调用 `GiveAbilityAndActivateOnce()`。这个函数会授予技能并立即尝试激活它一次，这对于被动技能的初始化至关重要。同时，通过一个多播 RPC (`MulticastActivatePassiveEffect`) 通知所有客户端激活该技能关联的视觉特效。
+ *       - 如果是其他状态（如“已解锁但未装备”），则只调用 `GiveAbility()`，不立即激活。
+ * 5.  **标记完成**: 所有技能都授予完毕后，将 `bStartupAbilitiesGiven` 标志设为 `true`。这是一个非常重要的状态锁，用于通知系统其他部分（如特效组件）ASC 已经准备就绪。
+ * 6.  **广播委托**: 调用 `AbilitiesGivenDelegate.Broadcast()`，这是一个自定义委托，用于通知任何监听者（例如 UI）初始技能已经授予完毕，可以进行刷新了。
+ */
+
+void UAuraAbilitySystemComponent::AddCharacterAbilitiesFromSaveData(ULoadScreenSaveGame* SaveData)
+{
+	// 遍历从存档文件中加载出来的每一个技能数据。
+	for (const FSavedAbility& Data : SaveData->SavedAbilities)
+	{
+		// 步骤 1/4: 重建技能规格 (FGameplayAbilitySpec)
+		// 从数据中获取技能的 UClass。
+		const TSubclassOf<UGameplayAbility> LoadedAbilityClass = Data.GamePlayAbility;
+		// FGameplayAbilitySpec 是技能在 ASC 中的运行时实例。它包含了技能的等级、输入绑定、动态标签等信息。
+		// 这里我们用技能类和保存的等级来创建一个新的 Spec。
+		FGameplayAbilitySpec LoadedAbilitySpec = FGameplayAbilitySpec(LoadedAbilityClass, Data.AbilityLevel);
+
+		// 步骤 2/4: 恢复动态标签
+		// (旧 → 新 API): 在旧版本 UE 中这里可能是 LoadedAbilitySpec.DynamicAbilityTags。
+		// 在 UE5.1+ 中，官方推荐使用 GetDynamicSpecSourceTags() 来访问和修改这些标签。不过 DynamicAbilityTags 依然可用。
+		// 动态标签是附加到这个特定 Spec 上的 Tag，用于描述它的状态，比如它被装备在哪个槽位。
+		LoadedAbilitySpec.DynamicAbilityTags.AddTag(Data.AbilitySlot);
+		LoadedAbilitySpec.DynamicAbilityTags.AddTag(Data.AbilityStatus);
+
+		// 步骤 3/4: 根据技能类型分别处理
+		// 检查技能的类型Tag是否为“进攻型”（即主动技能）。
+		if (Data.AbilityType == FAuraGamePlayTags::Get().Abilities_Type_Offensive)
+		{
+			// GiveAbility 是授予技能的标准函数。它将 Spec 添加到 ASC 中，但通常不会自动激活它。
+			GiveAbility(LoadedAbilitySpec);
+		}
+		// 检查技能类型是否为“被动型”。
+		else if (Data.AbilityType == FAuraGamePlayTags::Get().Abilities_Type_Passive)
+		{
+			// 对于被动技能，需要进一步检查它在保存时是否是“已装备”状态。
+			// (为什么用 MatchesTagExact): HasTagExact 通常用于检查一个容器是否精确包含某个 Tag。
+			// MatchesTagExact 用于比较两个 Tag 是否完全相等。这里两者效果类似，但 MatchesTagExact 意图更明确。
+			if (Data.AbilityStatus.MatchesTagExact(FAuraGamePlayTags::Get().Abilities_Status_Equipped))
+			{
+				// GiveAbilityAndActivateOnce 是一个特殊的授予函数，它在授予技能后会立即尝试激活一次。
+				// 这对于那些需要“启动”的被动技能（比如一个永久光环）是必需的。
+				GiveAbilityAndActivateOnce(LoadedAbilitySpec);
+				// (NetMulticast): 这是一个多播 RPC (Remote Procedure Call)。
+				// 服务器调用此函数后，它会在服务器自身和所有已连接的客户端上执行。
+				// 用于确保所有玩家都能看到这个被动技能激活时的视觉特效（比如光环出现）。
+				MulticastActivatePassiveEffect(Data.AbilityTag, true);
+			}
+			else
+			{
+				// 如果被动技能未装备，就只授予它，不激活。
+				GiveAbility(LoadedAbilitySpec);
+			}
+			
+		}
+	}
+	// 步骤 4/4: 发送完成信号
+	// 这是一个非常重要的标志，用于防止其他系统在 ASC 完全就绪前就尝试查询技能状态。
+	bStartupAbilitiesGiven = true;
+	// 广播一个委托，通知 UI 或其他系统：“所有技能都已加载完毕，你们可以刷新了！”
+	AbilitiesGivenDelegate.Broadcast();
 }
 
 void UAuraAbilitySystemComponent::AddCharacterAbilities(const TArray<TSubclassOf<UGameplayAbility>>& StartUpAbilities)
@@ -71,8 +155,11 @@ void UAuraAbilitySystemComponent::AddCharacterPassiveAbilities(const TArray<TSub
 		// - AbilityClass: 技能类
 		// - 1: 技能等级（可根据设计需求调整）
 		FGameplayAbilitySpec AbilitySpec = FGameplayAbilitySpec(AbilityClass, 1);
+		//设置已激活技能为已装备
+		AbilitySpec.DynamicAbilityTags.AddTag(FAuraGamePlayTags::Get().Abilities_Status_Equipped);
 		// 赋予能力并激活（单次激活模式）
 		GiveAbilityAndActivateOnce(AbilitySpec);
+	
 	}
 }
 
@@ -632,6 +719,10 @@ void UAuraAbilitySystemComponent::ServerEquipAbility_Implementation(
                     TryActivateAbility(AbilitySpec->Handle);          // 激活被动 GA（通常是持续效果/被动监听）
                     MulticastActivatePassiveEffect(AbilityTag, true); // 多播：打开被动表现（VFX/SFX/UI）
                 }
+            	//先移除能力状态
+            	AbilitySpec->DynamicAbilityTags.RemoveTag(GetStatusFromSpec(*AbilitySpec));
+            	//后设置能力状态为已装备
+            	AbilitySpec->DynamicAbilityTags.AddTag(GamePlayTags.Abilities_Status_Equipped);
             }
 
             // 步骤 9：把本能力分配到新槽位（会写入 Spec 的动态源标签）

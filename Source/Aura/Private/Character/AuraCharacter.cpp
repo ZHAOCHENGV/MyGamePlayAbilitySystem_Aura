@@ -14,7 +14,13 @@
 #include "NiagaraComponent.h"
 #include "Camera/CameraComponent.h"
 #include "Debuff/DebuffNiagaraComponent.h"
+#include "Game/AuraGameModeBase.h"
+#include "Game/LoadScreenSaveGame.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "GAS/AuraAbilitySystemLibrary.h"
+#include "GAS/AuraAttributeSet.h"
+#include "GAS/Data/AbilityInfo.h"
+#include "Kismet/GameplayStatics.h"
 
 AAuraCharacter::AAuraCharacter()
 {
@@ -63,9 +69,83 @@ void AAuraCharacter::PossessedBy(AController* NewController)
 
 	//为服务器初始化能力信息
 	InitAbilityActorInfo();
-	//为服务器添加角色能力组件
-	AddCharacterAbilities();
-	
+	LoadProgress();
+
+	if (AAuraGameModeBase* AuraGameMode = Cast<AAuraGameModeBase>(UGameplayStatics::GetGameMode(this)))
+	{
+		AuraGameMode->LoadWorldState(GetWorld());
+	}
+}
+
+
+
+/**
+ * @brief 在角色进入游戏时加载其进度，区分是“首次进入”还是“从存档加载”。
+ *
+ * @par 功能说明
+ * 该函数是角色初始化的关键入口点。它负责从 GameMode 获取存档数据，然后根据一个标志位 (`bFirstTimeLoadIn`)
+ * 来决定是执行“新游戏”的初始化流程，还是执行“加载游戏”的恢复流程。
+ *
+ * @par 详细流程
+ * 1.  **获取 GameMode 和存档数据**: 首先获取 `AAuraGameModeBase` 的实例，并调用其辅助函数 `RetrieveInGameSaveData()` 来加载或创建一个存档对象。
+ * 2.  **分支逻辑判断**: 检查存档对象中的 `bFirstTimeLoadIn` 布尔标志。
+ * 3.  **首次加载 (新游戏) 流程**:
+ *     - 调用 `InitializeDefaultAttributes()`: 为角色的 ASC (Ability System Component) 初始化一套基础属性（如生命值、法力值），这些数据通常来自一个数据表 (DataTable)。
+ *     - 调用 `AddCharacterAbilities()`: 为角色授予一套默认的初始技能。
+ * 4.  **从存档加载流程**:
+ *     - **恢复技能**: 获取角色的 ASC，并调用其 `AddCharacterAbilitiesFromSaveData()` 函数，将存档中记录的所有技能、等级和状态都恢复到 ASC 中。
+ *     - **恢复玩家状态**: 获取角色的 PlayerState，并将存档中的等级、经验值、属性点和技能点恢复到 PlayerState 中。
+ *     - **恢复属性值**: 调用一个静态库函数 `InitializeDefaultAttributesFromSaveData()`，该函数负责从存档数据中读取并应用所有属性的当前值（例如，恢复生命值为上次保存时的 85/100）。
+ *
+ * @par 注意事项
+ * - 此函数被调用的**时机**至关重要。它应该在角色的 PlayerState 和 AbilitySystemComponent 都已经初始化并可用之后被调用（例如，在 `PossessedBy` 或 `OnRep_PlayerState` 中）。
+ * - `bFirstTimeLoadIn` 标志的管理是整个逻辑的核心。GameMode 应该在创建第一个存档时将其设为 `true`，并在第一次保存后立即将其设为 `false`。
+ * - 职责划分清晰：Character 负责**编排**加载流程，而具体的恢复工作则委托给了 ASC、PlayerState 和静态库函数，这是良好的代码架构。
+ */
+void AAuraCharacter::LoadProgress()
+{
+	// 步骤 1/5: 获取 GameMode，因为它是存档逻辑的中心管理者。
+	AAuraGameModeBase* AuraGameMode = Cast<AAuraGameModeBase>(UGameplayStatics::GetGameMode(this));
+	if (AuraGameMode) // 安全检查，确保 GameMode 有效且类型正确。
+	{
+		// 步骤 2/5: 从 GameMode 获取当前游戏会话对应的存档数据对象。
+		ULoadScreenSaveGame* SaveData = AuraGameMode->RetrieveInGameSaveData();
+		if (SaveData == nullptr) return;// 如果无法获取存档数据，则中止加载流程。
+
+		// 步骤 3/5: 判断是新游戏还是加载游戏。
+		// bFirstTimeLoadIn 是一个在创建新存档时设置的标志。
+		if (SaveData->bFirstTimeLoadIn)
+		{
+			// --- 新游戏流程 ---
+			InitializeDefaultAttributes(); // 应用默认的基础属性（来自DataTable）。
+			AddCharacterAbilities();// 授予初始的默认技能。
+			
+		}
+		else
+		{
+			// --- 从存档加载流程 ---
+			// 步骤 4/5: 恢复技能和玩家状态
+			if (UAuraAbilitySystemComponent* AuraASC = Cast<UAuraAbilitySystemComponent>(AbilitySystemComponent))
+			{
+				// 请求 ASC 从存档数据中恢复所有技能。
+				AuraASC->AddCharacterAbilitiesFromSaveData(SaveData);
+			};
+			
+			// (为什么这么做): 玩家的等级、经验值等核心数据应该存在于 PlayerState 中，而不是 Character。
+			// 因为 PlayerState 在玩家死亡重生后依然存在，并且能稳定地在服务器和客户端之间复制。			
+			if (AAuraPlayerState* AuraPlayerState = Cast<AAuraPlayerState>(GetPlayerState()))
+			{
+				AuraPlayerState->SetLevel(SaveData->PlayerLevel);// 恢复等级。
+				AuraPlayerState->SetXP(SaveData->XP); // 恢复经验值。
+				AuraPlayerState->SetAttributePoints(SaveData->AttributePoints); // 恢复属性点。
+				AuraPlayerState->SetSpellPoints(SaveData->SpellPoints); // 恢复技能点。
+			}
+			// 步骤 5/5: 恢复属性的当前值
+			// 这个函数负责将存档中的具体数值（如当前生命值）应用到 ASC 的属性集 (AttributeSet) 中。
+			UAuraAbilitySystemLibrary::InitializeDefaultAttributesFromSaveData(this,AbilitySystemComponent,SaveData);
+		}
+		
+	}
 }
 
 //重写 OnRep_PlayerState ，在网络同步时，PlayerState 属性被复制（Replicated）到客户端时调用。
@@ -250,6 +330,105 @@ void AAuraCharacter::HideMagicCircle_Implementation()
 	}
 }
 
+
+
+
+/**
+ * @brief (IPlayerInterface 接口实现) 保存玩家角色的所有进度数据。
+ * @param CheckPointTag 触发本次保存的检查点（或区域）的标签，将作为新的玩家出生点。
+ *
+ * @par 功能说明
+ * 这是游戏核心的存档函数。当被调用时（通常由一个检查点触发），它会执行一个完整的“快照”操作：
+ * 1.  从 GameMode 获取当前会话的内存中存档对象。
+ * 2.  将新的出生点标签、玩家的核心状态（等级、经验值、点数）和属性集中的当前属性值写入该对象。
+ * 3.  **只在服务器上**，遍历角色的能力系统组件（ASC）中的所有技能。
+ * 4.  对每一个技能，将其所有相关数据（类、等级、槽位、状态等）打包成一个自定义结构体。
+ * 5.  将所有打包好的技能数据存入存档对象的数组中。
+ * 6.  最后，请求 GameMode 将这个填满了最新数据的内存中存档对象序列化到磁盘。
+ *
+ * @par 详细流程
+ * 1.  **获取对象**: 获取 GameMode 和当前会话的 ULoadScreenSaveGame 实例。
+ * 2.  **保存简单数据**: 将传入的 `CheckPointTag`、PlayerState 中的数据（等级、经验值等）、AttributeSet 中的核心属性（力量、智力等）直接复制到 SaveData 对象中。
+ * 3.  **更新新游戏标志**: 将 `bFirstTimeLoadIn` 设为 `false`，确保下次加载时会执行“从存档加载”的逻辑。
+ * 4.  **服务器权限检查**: **关键步骤**。检查当前是否在服务器上 (`HasAuthority()`)。保存技能列表这个权威操作必须且只能由服务器执行。
+ * 5.  **准备技能保存**: 清空 SaveData 中的旧技能列表，准备完全重写。
+ * 6.  **遍历技能**: 使用 ASC 的 `ForEachAbility` 函数和 Lambda 表达式，对 ASC 中授予的每一个技能执行一段自定义逻辑。
+ * 7.  **打包技能数据**: 在 Lambda 内部，为每个技能：
+ *     - 获取其唯一的 GameplayTag。
+ *     - 使用该 Tag 从全局的 `AbilityInfo` 数据资产中查找该技能的静态信息（如技能类型）。
+ *     - 获取其运行时的动态信息（如当前等级、装备槽位、状态）。
+ *     - 将所有这些信息打包进一个 `FSavedAbility` 结构体。
+ * 8.  **存储技能**: 将打包好的 `FSavedAbility` 添加到 SaveData 的 `SavedAbilities` 数组中。
+ * 9.  **写入磁盘**: 所有数据都已写入内存中的 `SaveData` 对象后，调用 GameMode 的函数将其真正保存到文件。
+ */
+void AAuraCharacter::SaveProgress_Implementation(const FName& CheckPointTag)
+{
+	// 步骤 1/7: 获取 GameMode 和内存中的存档对象。
+	AAuraGameModeBase* AuraGameMode = Cast<AAuraGameModeBase>(UGameplayStatics::GetGameMode(this));
+	if (AuraGameMode)
+	{
+		ULoadScreenSaveGame* SaveData = AuraGameMode->RetrieveInGameSaveData();
+		if (SaveData == nullptr)return;// 如果无法获取存档对象，则无法继续。
+		// 步骤 2/7: 保存玩家状态和新的出生点。
+		SaveData->PlayerStartTag = CheckPointTag;// 将触发存档的检查点的Tag存下来，作为下次加载的出生点。
+		if (AAuraPlayerState* AuraPlayerState = Cast<AAuraPlayerState>(GetPlayerState()))
+		{
+			SaveData->PlayerLevel = AuraPlayerState->GetPlayerLevel();
+			SaveData->XP = AuraPlayerState->GetXp();
+			SaveData->AttributePoints = AuraPlayerState->GetAttributePoints();
+			SaveData->SpellPoints = AuraPlayerState->GetSpellPoints();
+		}
+
+		// 步骤 3/7: 保存核心属性的当前值。
+		// (为什么这么做): 这是从 ASC 的 AttributeSet 中安全读取属性当前值的标准方法。
+		// GetStrengthAttribute() 返回一个 FGameplayAttribute 句柄，GetNumericValue() 用这个句柄去获取值。
+		SaveData->Strength = UAuraAttributeSet::GetStrengthAttribute().GetNumericValue(GetAttributeSet());
+		SaveData->Intelligence = UAuraAttributeSet::GetIntelligenceAttribute().GetNumericValue(GetAttributeSet());
+		SaveData->Resilience = UAuraAttributeSet::GetResilienceAttribute().GetNumericValue(GetAttributeSet());
+		SaveData->Vigor = UAuraAttributeSet::GetVigorAttribute().GetNumericValue(GetAttributeSet());
+
+		// 步骤 4/7: 标记游戏为“已非首次加载”。
+		SaveData->bFirstTimeLoadIn = false;
+
+		// 步骤 5/7: 关键的服务器权限检查。
+		// (为什么这么做): 玩家拥有哪些技能、技能的等级和状态，这些都是权威信息，必须由服务器说了算。
+		// 此检查确保接下来的技能保存逻辑只在服务器上执行，防止客户端作弊。
+		if (!HasAuthority()) return;
+
+		// 步骤 6/7: 遍历并保存所有技能。
+		UAuraAbilitySystemComponent* AuraASC = Cast<UAuraAbilitySystemComponent>(AbilitySystemComponent);
+		FForEachAbility SaveAbilityDelegate; // 声明一个委托，用于传递给 ForEachAbility 函数。
+		SaveData->SavedAbilities.Empty();// 清空旧的技能存档，准备进行一次全新的“快照”式保存。
+
+		// (为什么这么做): BindLambda 允许我们在原地定义一个匿名函数，并将其绑定到委托上。
+		// [this, AuraASC, SaveData] 是捕获列表，让 Lambda 内部可以访问这三个变量。
+		SaveAbilityDelegate.BindLambda([this, AuraASC, SaveData](const FGameplayAbilitySpec& AbilitySpec)
+		{
+			// --- 这段代码会对 ASC 中的每一个技能执行一遍 ---
+			const FGameplayTag AbilityTag = AuraASC->GetAbilityTagFromSpec(AbilitySpec);// 获取技能的主 Tag。
+			UAbilityInfo* AbilityInfo = UAuraAbilitySystemLibrary::GetAbilityInfo(this);// 获取存储所有技能静态信息的 DataAsset。
+			FAuraAbilityInfo Info = AbilityInfo->FindAbilityInfoForTag(AbilityTag); // 从 DataAsset 中查找此技能的静态数据。
+
+			FSavedAbility SavedAbility; // 创建一个用于打包的临时结构体。
+			SavedAbility.GamePlayAbility = Info.Ability; // 技能的 UClass。
+			SavedAbility.AbilityLevel = AbilitySpec.Level; // 技能的当前等级。
+			SavedAbility.AbilitySlot = AuraASC->GetSlotFromAbilityTag(AbilityTag); // 技能装备的槽位 Tag。
+			SavedAbility.AbilityStatus = AuraASC->GetStatusFromAbilityTag(AbilityTag); // 技能的当前状态 Tag。
+			SavedAbility.AbilityTag = AbilityTag; // 技能的主 Tag。
+			SavedAbility.AbilityType = Info.AbilityType; // 技能的类型 Tag (主动/被动)。
+
+			// 将打包好的数据添加到存档对象的数组中。
+			SaveData->SavedAbilities.AddUnique(SavedAbility);
+
+		});
+		// 指示 ASC 对其内部的每一个技能，都调用上面 Lambda 中定义的逻辑。
+		AuraASC->ForEachAbility(SaveAbilityDelegate);
+		
+		// 步骤 7/7: 请求 GameMode 将填满数据的 SaveData 对象写入磁盘。
+		AuraGameMode->SaveInGameProgressData(SaveData);
+	}
+}
+
 int32 AAuraCharacter::GetPlayerLevel_Implementation()
 {
 	//获取玩家状态
@@ -385,8 +564,8 @@ void AAuraCharacter::InitAbilityActorInfo()
 		}
 	}
 
-	// 8) 应用初始属性（一般在服务器执行一次，依赖 GE 复制到客户端）
-	InitializeDefaultAttributes();
+	/*// 8) 应用初始属性（一般在服务器执行一次，依赖 GE 复制到客户端）
+	InitializeDefaultAttributes();*/
 }
 
 

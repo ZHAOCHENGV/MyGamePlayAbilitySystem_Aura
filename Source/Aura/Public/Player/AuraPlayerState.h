@@ -10,7 +10,7 @@
 class ULevelUpInfo;
 // 声明带有一个int32参数的多播委托（用于属性变更通知）
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnPlayerStatChanged, int32)
-
+DECLARE_MULTICAST_DELEGATE_TwoParams(FOnLevelChanged, int32 /*StatValue*/, bool /*bLevelUp*/)
 
 class UAbilitySystemComponent;
 class UAttributeSet;
@@ -40,7 +40,7 @@ public:
 	// XP变更委托
 	FOnPlayerStatChanged OnXPChangedDelegate;
 	// 等级变更委托
-	FOnPlayerStatChanged OnLevelChangedDelegate;
+	FOnLevelChanged OnLevelChangedDelegate;
 	//属性点变更委托
 	FOnPlayerStatChanged OnAttributePointsChangedDelegate;
 	//法术点变更委托
@@ -64,7 +64,7 @@ public:
 	void AddToXP(int32 InXP);
 	// 提升等级（网络同步方法）
 	void AddToLevel(int32 InLevel);
-	//增加属性电动
+	//增加属性点
 	void AddToAttributePoints(int32 InAttributePoints);
 	//增加法术点
 	void AddToSpellPoints(int32 InSpellPoints);
@@ -72,6 +72,8 @@ public:
 	void SetXP(int32 InXP);
 	// 直接设置等级（网络同步方法）
 	void SetLevel(int32 InLevel);
+	void SetAttributePoints(int32 InAttributePoints);
+	void SetSpellPoints(int32 InSpellPoints);
 
 	
 protected:	
@@ -99,7 +101,7 @@ private:
 
 	//法术点
 	UPROPERTY(VisibleAnywhere, ReplicatedUsing=OnRep_SpellPoints)
-	int32 SpellPoints = 1;
+	int32 SpellPoints = 0;
 	
 	// 网络复制时，会调用这个函数，处理等级变化后的逻辑
 	UFUNCTION()

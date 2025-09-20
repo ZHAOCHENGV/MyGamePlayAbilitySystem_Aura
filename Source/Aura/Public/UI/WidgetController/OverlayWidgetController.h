@@ -46,6 +46,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnAttributeChangedSignature,float,N
 //声明消息组件行动态多播
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FMessageWidgetRowSignature,FUIWidgetRow,Row);
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnLevelChangedSignature,int32,NewLevel,bool,bLevelUp);
 
 
 /**
@@ -86,7 +87,7 @@ public:
 
 	//在玩家级别更改时代理
 	UPROPERTY(BlueprintAssignable, Category ="GAS|Level")
-	FOnPlayerStatChangedSignature OnPlayerLevelChangedDelegate;
+	FOnLevelChangedSignature OnPlayerLevelChangedDelegate;
 
 	
 protected:

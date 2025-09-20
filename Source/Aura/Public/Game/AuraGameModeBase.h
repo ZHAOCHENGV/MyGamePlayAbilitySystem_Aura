@@ -34,6 +34,16 @@ public:
 	//删除保存数据
 	static void DeleteSlot(const FString& SlotName, int32 SlotIndex);
 
+	//检索游戏保存数据
+	ULoadScreenSaveGame* RetrieveInGameSaveData();
+
+	//保存在游戏进度数据中
+	void SaveInGameProgressData(ULoadScreenSaveGame* SaveObject);
+
+	//保存世界状态
+	void SaveWorldState(UWorld* World) const;
+	//加载世界状态
+	void LoadWorldState(UWorld* World) const;
 	
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<USaveGame> LoadScreenSaveGameClass;

@@ -43,12 +43,16 @@ public:
 	void SetPlayerName(FString InPlayerName);
 	//设置地图名称
 	void SetMapName(FString InMapName);
+	//设置玩家等级
+	void SetPlayerLevel(int32 InLevel);
 	//获取加载槽名称
 	FString GetLoadSlotName() const {return LoadSlotName;};
 	//获取玩家名称
 	FString GetPlayerName() const {return PlayerName;};
 	//获取地图名称
 	FString GetMapName() const {return MapName;};
+	//获取玩家等级
+	int32 GetPlayerLevel() const {return PlayerLevel;};
 
 private:
 	/**
@@ -75,4 +79,8 @@ private:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, FieldNotify, Setter, Getter, meta= (AllowPrivateAccess="true"));
 	FString MapName;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, FieldNotify, Setter, Getter, meta= (AllowPrivateAccess="true"));
+	int32 PlayerLevel;
 };
+

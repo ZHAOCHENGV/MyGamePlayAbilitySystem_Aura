@@ -90,6 +90,7 @@ void UMVVM_LoadScreen::NewSlotButtonPressed(int32 Slot, const FString& EnteredNa
 		// 步骤 2/2: 更新 ViewModel 并请求保存
 		LoadSlots[Slot]->SetMapName(AuraGameMode->DefaultMapName);// 从 GameMode 获取默认地图名并设置到 ViewModel。
 		LoadSlots[Slot]->SetPlayerName(EnteredName);// 将玩家输入的名字设置到 ViewModel。
+		LoadSlots[Slot]->SetPlayerLevel(1);
 		LoadSlots[Slot]->SlotStatus = Taken;// 更新 ViewModel 的内部状态为“已占用”。
 		LoadSlots[Slot]->PlayerStartTag = AuraGameMode->DefaultPlayerStartTag;
 		
@@ -181,6 +182,7 @@ void UMVVM_LoadScreen::LoadData()
 		LoadSlot.Value->SetPlayerName(SaveObject->PlayerName);
 		LoadSlot.Value->SetMapName(SaveObject->MapName);
 		LoadSlot.Value->PlayerStartTag = SaveObject->PlayerStartTag;
+		LoadSlot.Value->SetPlayerLevel(SaveObject->PlayerLevel);
 		// 根据加载的数据刷新槽位 UI
 		LoadSlot.Value->InitializeSlot();
 	}
@@ -217,6 +219,8 @@ void UMVVM_LoadScreen::PlayButtonPressed()
 	AAuraGameModeBase* AuraGameMode = Cast<AAuraGameModeBase>(UGameplayStatics::GetGameMode(this));
 	UAuraGameInstance* AuraGameInstance = Cast<UAuraGameInstance>(AuraGameMode->GetGameInstance());
 	AuraGameInstance->PlayerStartTag = SelectedSlot->PlayerStartTag;
+	AuraGameInstance->LoadSlotName = SelectedSlot->GetLoadSlotName();
+	AuraGameInstance->LoadSlotIndex = SelectedSlot->SlotIndex;
 	// 再次检查 SelectedSlot 是否有效，这是一个很好的防御性编程习惯。
 	if (IsValid(SelectedSlot) && AuraGameMode)
 	{

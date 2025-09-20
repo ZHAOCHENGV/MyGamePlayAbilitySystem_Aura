@@ -40,6 +40,7 @@ public:
 	virtual int32 GetSpellPoints_Implementation() const override;
 	virtual void ShowMagicCircle_Implementation(UMaterialInterface* DecalMaterial = nullptr) override;
 	virtual void HideMagicCircle_Implementation() override;
+	virtual void SaveProgress_Implementation(const FName& CheckPointTag) override;
 	/*结束PlayerInterface接口*/
 
 	
@@ -53,6 +54,7 @@ public:
 
 	virtual void OnRep_Stunned() override;
 	virtual void OnRep_Burned() override;
+	void LoadProgress();
 private:
 	//设置拥有者Owner Actor和Avater actor 
 	virtual void InitAbilityActorInfo() override;
@@ -70,3 +72,5 @@ private:
 	
 	
 };
+
+

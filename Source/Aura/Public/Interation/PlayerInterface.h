@@ -40,7 +40,7 @@ public:
 	UFUNCTION(BlueprintNativeEvent)
 	int32 GetSpellPointsReward(int32 Level)const;
 
-	
+
 	//添加经验值
 	UFUNCTION(BlueprintNativeEvent)
 	void AddToXP(int32 InXP);
@@ -75,4 +75,8 @@ public:
 	//隐藏魔法阵
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void HideMagicCircle();
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void SaveProgress(const FName& CheckPointTag);
+	
 };

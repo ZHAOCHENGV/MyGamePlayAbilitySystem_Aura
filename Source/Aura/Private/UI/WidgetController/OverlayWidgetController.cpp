@@ -29,21 +29,14 @@ void UOverlayWidgetController::BindCallbacksToDependencies()
 	
 	GetAuraPS()->OnXPChangedDelegate.AddUObject(this, &UOverlayWidgetController::OnXPChanged);
 	GetAuraPS()->OnLevelChangedDelegate.AddLambda(
-	[this](int32 NewLevel)
+	[this](int32 NewLevel, bool bLevelUp)
 	{
-		OnPlayerLevelChangedDelegate.Broadcast(NewLevel);
+		OnPlayerLevelChangedDelegate.Broadcast(NewLevel,bLevelUp);
 	}
 	);
 	
 
-	/// 绑定属性值变化的回调函数
-	// GetGameplayAttributeValueChangeDelegate 是静态多播委托（Multicast Delegate）。
-	// 当指定的 GameplayAttribute 值发生变化时，会触发该委托，通知所有绑定的回调函数。
-	// 使用 AddUObject 方法将成员函数绑定到委托。
-	// AddUObject 适用于单一绑定场景，且能安全地处理 UObject 的生命周期。
-	// 如果需要支持蓝图或序列化，动态多播委托（AddDynamic）会更合适，但性能略低。
-	// 绑定 Health 属性变化的回调
-	//使用Lambda匿名函数，广播委托
+	
 	AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(GetAuraAS()->GetHealthAttribute())
 	.AddLambda(
 		[this](const FOnAttributeChangeData& Data)

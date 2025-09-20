@@ -48,9 +48,19 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "Character Class Defaults")
 	TMap<ECharacterClass, FCharacterClassDefaultInfo> CharacterClassInformation;
 
+	//主要属性（用于加载本地保存的数据）
+	UPROPERTY(EditDefaultsOnly, Category = "Common Class Defaults")
+	TSubclassOf<UGameplayEffect> PrimaryAttributes_SetByCaller;
+	
+	
 	// 公共职业的次要属性（比如耐力、敏捷），适用于所有职业
 	UPROPERTY(EditDefaultsOnly, Category = "Common Class Defaults")
 	TSubclassOf<UGameplayEffect> SecondaryAttributes;
+
+	// 持续性的公共职业的次要属性（比如耐力、敏捷），适用于所有职业
+	UPROPERTY(EditDefaultsOnly, Category = "Common Class Defaults")
+	TSubclassOf<UGameplayEffect> SecondaryAttributes_Infinite;
+	
 
 	// 公共职业的生命值等关键属性，适用于所有职业
 	UPROPERTY(EditDefaultsOnly, Category = "Common Class Defaults")

@@ -9,6 +9,7 @@
 #include "GAS/Data/CharacterClassInfo.h"
 #include "AuraAbilitySystemLibrary.generated.h"
 
+class ULoadScreenSaveGame;
 class UAbilityInfo;
 class AAuraHUD;
 struct FWidgetControllerParams;
@@ -44,6 +45,10 @@ public:
 	//根据职业和等级，初始化默认属性
 	UFUNCTION(BlueprintCallable, Category = "AuraAbilitySystemLibrary|CharacterClassDefaults")
 	static void InitializeDefaultAttribute(const UObject* WorldContextObject,ECharacterClass CharacterClass, float Level,UAbilitySystemComponent* ASC);
+	
+	//从保存数据初始化默认属性
+	UFUNCTION(BlueprintCallable, Category = "AuraAbilitySystemLibrary|CharacterClassDefaults")
+	static void InitializeDefaultAttributesFromSaveData(const UObject* WorldContextObject, UAbilitySystemComponent* ASC, ULoadScreenSaveGame* SaveGame);
 
 	//根据职业给予初始能力
 	UFUNCTION(BlueprintCallable, Category = "AuraAbilitySystemLibrary|CharacterClassDefaults")

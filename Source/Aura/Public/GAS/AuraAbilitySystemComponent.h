@@ -6,6 +6,7 @@
 #include "AbilitySystemComponent.h"
 #include "AuraAbilitySystemComponent.generated.h"
 
+class ULoadScreenSaveGame;
 //声明多播委托
 DECLARE_MULTICAST_DELEGATE_OneParam(FEffectAssetTags,const FGameplayTagContainer & /*资产标签AssetTags*/)
 
@@ -40,7 +41,7 @@ public:
 	//定义委托实列
 	FEffectAssetTags EffectAbilityTags;
 
-	// 实例化多播委托对象
+	// 实例化多播委托对象 赋予的能力委托
 	FAbilitiesGiven AbilitiesGivenDelegate;
 
 	//委托：能力状态已更改
@@ -57,7 +58,7 @@ public:
 	
 	//是否能力初始化完成?
 	bool bStartupAbilitiesGiven = false;
-	
+	void AddCharacterAbilitiesFromSaveData(ULoadScreenSaveGame* SaveData);
 	//添加角色能技能
 	void AddCharacterAbilities(const TArray<TSubclassOf<UGameplayAbility>> & StartUpAbilities);
 	//添加角色被动技能

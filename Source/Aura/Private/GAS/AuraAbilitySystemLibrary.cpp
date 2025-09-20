@@ -7,6 +7,7 @@
 #include "AuraAbilityTypes.h"
 #include "AuraGamePlayTags.h"
 #include "Game/AuraGameModeBase.h"
+#include "Game/LoadScreenSaveGame.h"
 #include "Interation/CombatInterface.h"
 #include "UI/WidgetController/AuraWidgetController.h"
 #include "Kismet/GameplayStatics.h"
@@ -135,6 +136,84 @@ void UAuraAbilitySystemLibrary::InitializeDefaultAttribute(const UObject* WorldC
 	FGameplayEffectSpecHandle VitalAttributesSpecHandle = ASC->MakeOutgoingSpec(CharacterClassInfo->VitalAttributes, Level, VitalAttributesContextHandle);
 	ASC->ApplyGameplayEffectSpecToSelf(*VitalAttributesSpecHandle.Data.Get());
 }
+
+
+
+/**
+ * @brief 从存档数据中恢复并应用角色的所有核心属性。
+ * @param WorldContextObject 用于获取游戏世界全局对象的上下文。
+ * @param ASC 目标角色的能力系统组件 (Ability System Component)。
+ * @param SaveGame 包含已保存属性数据的存档对象。
+ *
+ * @par 功能说明
+ * 这是一个静态库函数，负责在加载游戏时，将存档文件中的属性值（力量、智力、当前生命/法力等）
+ * 精确地恢复到角色的属性集 (AttributeSet) 中。它使用了 Gameplay Effect (GE) 的
+ * "SetByCaller" 机制来高效地一次性设置所有主要属性，然后再应用其他 GE 来派生计算
+ * 次要属性和重要属性。
+ *
+ * @par 详细流程
+ * 1.  **获取配置**: 首先获取 `UCharacterClassInfo` 数据资产，这个资产中预先配置了用于初始化各种属性的 Gameplay Effect (GE) 蓝图。
+ * 2.  **设置主要属性 (Primary Attributes)**:
+ *     - 创建一个 GE 规格 (Spec) - 这是 GE 的一个待应用的实例。
+ *     - **关键步骤**: 使用 `AssignTagSetByCallerMagnitude` 函数，将从 `SaveGame` 对象中读取到的具体数值（如 `SaveGame->Intelligence`）“注入”到 GE 规格中。每个数值都由一个唯一的 GameplayTag (如 `Attributes_Primary_Intelligence`) 作为标识。
+ *     - 应用这个被“填满了数据”的 GE 规格。GE 内部的逻辑会读取这些注入的值，并将它们设置为力量、智力等主要属性的基础值。
+ * 3.  **应用次要属性 (Secondary Attributes)**:
+ *     - 创建并应用另一个 GE。这个 GE 通常是“无限持续时间”的，它的作用是根据刚刚设置好的主要属性，通过公式（如 `MaxMana = 50 + 2 * Intelligence`）来计算并设置所有次要属性（如最大法力值、护甲等）。
+ * 4.  **应用重要属性 (Vital Attributes)**:
+ *     - 创建并应用第三个 GE。这个 GE 通常是“即时”的，它的作用是设置角色的当前生命值和法力值。在加载时，这通常意味着将它们设置为其最大值。
+ *
+ * @par 注意事项
+ * - **SetByCaller 模式**: 这是本函数的核心。它允许我们用一个 GE 来处理多个属性的设置，而不是为每个属性都创建一个单独的 GE。这非常高效且易于数据管理。GE 蓝图中的 Modifier (修改器) 的值来源必须被设置为 "Set by Caller"，并且其 `Data Tag` 必须与代码中使用的 Tag 完全匹配。
+ * - 这个函数只恢复了**基础属性**和**派生属性**，但没有从存档中恢复**当前的生命值/法力值**。它只是应用了一个 GE，该 GE 很可能将当前生命/法力设置为最大值。
+ */
+void UAuraAbilitySystemLibrary::InitializeDefaultAttributesFromSaveData(const UObject* WorldContextObject, UAbilitySystemComponent* ASC, ULoadScreenSaveGame* SaveGame)
+{
+	// 步骤 1/5: 获取角色职业信息的数据资产 (Data Asset)，其中包含了要使用的 GE。
+	UCharacterClassInfo* CharacterClassInfo = GetCharacterClassInfo(WorldContextObject);
+	if (CharacterClassInfo == nullptr) return; // 如果找不到配置，则无法继续。
+	
+	const FAuraGamePlayTags& GamePlayTags = FAuraGamePlayTags::Get(); // 获取 Gameplay Tag 的单例。
+	
+	const AActor * SourceAvatarActor = ASC->GetAvatarActor(); // 获取拥有此 ASC 的 Actor，作为 GE 的来源对象。
+
+	// --- 主要属性 (Primary Attributes) ---
+	// 步骤 2/5: 创建一个 GE 实例 (Spec)，并为其填充数据。
+	FGameplayEffectContextHandle EffectContextHandle = ASC->MakeEffectContext(); // 创建效果上下文，可以携带额外信息。
+	EffectContextHandle.AddSourceObject(SourceAvatarActor); // 将来源 Actor 添加到上下文中。
+	// 从 CharacterClassInfo 中获取预设的 "SetByCaller" GE，并创建一个 Spec Handle。
+	const FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(CharacterClassInfo->PrimaryAttributes_SetByCaller, 1.f, EffectContextHandle);
+
+	// 步骤 3/5: 使用 "SetByCaller" 机制将存档数据“注入”到 Spec 中。
+	// (为什么这么做): 这种方式将数据和逻辑解耦。代码只负责提供数据，而具体的数学计算（加、乘、覆盖）
+	// 则在 GE 蓝图中定义。这使得游戏设计师可以在不修改代码的情况下调整属性初始化的方式。
+	// 下面这行代码的意思是：“找到 Spec 中由 Intelligence Tag 标识的那个‘空’，把 SaveGame->Intelligence 的值填进去。”
+	UAbilitySystemBlueprintLibrary::AssignTagSetByCallerMagnitude(SpecHandle, GamePlayTags.Attributes_Primary_Intelligence, SaveGame->Intelligence);
+    UAbilitySystemBlueprintLibrary::AssignTagSetByCallerMagnitude(SpecHandle, GamePlayTags.Attributes_Primary_Resilience, SaveGame->Resilience);
+	UAbilitySystemBlueprintLibrary::AssignTagSetByCallerMagnitude(SpecHandle, GamePlayTags.Attributes_Primary_Strength, SaveGame->Strength);
+	UAbilitySystemBlueprintLibrary::AssignTagSetByCallerMagnitude(SpecHandle, GamePlayTags.Attributes_Primary_Vigor, SaveGame->Vigor);
+
+	// 步骤 4/5: 将填满数据的 Spec 应用到自己身上。
+	ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data);
+
+	
+	// --- 次要属性 (Secondary Attributes) ---
+	// (为什么这么做): 次要属性（如暴击率、护甲）通常由主要属性派生而来。在设置完主要属性后，
+	// 应用一个无限持续时间的 GE，它会根据公式自动计算并设置所有次要属性。
+	FGameplayEffectContextHandle SecondaryAttributesContextHandle = ASC->MakeEffectContext();
+	SecondaryAttributesContextHandle.AddSourceObject(SourceAvatarActor);
+	FGameplayEffectSpecHandle SecondaryAttributesSpecHandle = ASC->MakeOutgoingSpec(CharacterClassInfo->SecondaryAttributes_Infinite, 1.f, SecondaryAttributesContextHandle);
+	ASC->ApplyGameplayEffectSpecToSelf(*SecondaryAttributesSpecHandle.Data.Get());
+
+	// --- 重要属性 (Vital Attributes) ---
+	// (为什么这么做): 重要属性（当前生命、法力）在计算出最大值（来自次要属性GE）之后才应该被设置。
+	// 这个 GE 通常是一个 Instant (即时) 效果，将当前生命/法力设置为最大生命/法力。
+	FGameplayEffectContextHandle VitalAttributesContextHandle = ASC->MakeEffectContext();
+	VitalAttributesContextHandle.AddSourceObject(SourceAvatarActor);
+	FGameplayEffectSpecHandle VitalAttributesSpecHandle = ASC->MakeOutgoingSpec(CharacterClassInfo->VitalAttributes, 1.f, VitalAttributesContextHandle);
+	ASC->ApplyGameplayEffectSpecToSelf(*VitalAttributesSpecHandle.Data.Get());
+
+}
+
 
 void UAuraAbilitySystemLibrary::GiveStartupAbilities(const UObject* WorldContextObject, UAbilitySystemComponent* ASC,ECharacterClass CharacterClass)
 {
