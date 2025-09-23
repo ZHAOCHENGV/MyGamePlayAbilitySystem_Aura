@@ -3,6 +3,7 @@
 
 #include "Checkpoint/Checkpoint.h"
 
+
 #include "Components/SphereComponent.h"
 #include "Game/AuraGameModeBase.h"
 #include "Interation/PlayerInterface.h"
@@ -18,12 +19,17 @@ ACheckpoint::ACheckpoint(const FObjectInitializer& ObjectInitializer)
 	CheckpointMesh->SetupAttachment(GetRootComponent());
 	CheckpointMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	CheckpointMesh->SetCollisionResponseToAllChannels(ECR_Block);
-
+	CheckpointMesh->SetCustomDepthStencilValue(CustomDepthStencilOverride);
+	CheckpointMesh->MarkRenderStateDirty();
+		
 	Sphere = CreateDefaultSubobject<USphereComponent>("Sphere");
 	Sphere->SetupAttachment(CheckpointMesh);
 	Sphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	Sphere->SetCollisionResponseToAllChannels(ECR_Ignore);
 	Sphere->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+
+	MoveToComponent = CreateDefaultSubobject<USceneComponent>("MoveToComponent");
+	MoveToComponent->SetupAttachment(GetRootComponent());
 }
 
 
@@ -51,6 +57,86 @@ void ACheckpoint::LoadActor_Implementation()
 	}
 }
 
+/**
+ * @brief (HighlightInterface 接口实现) 当需要高亮此检查点时调用，为其开启自定义深度渲染。
+ *
+ * @par 功能说明
+ * 这是 `IHighlightInterface` 中 `HighlightActor` 函数的 C++ 实现 (`_Implementation`)。
+ * 当外部系统（例如玩家控制器检测到鼠标悬停）需要让这个检查点高亮时，会调用此函数。
+ * 它的核心逻辑是启用 `CheckpointMesh` 组件的“渲染自定义深度” (Render Custom Depth) 功能。
+ *
+ * @par 渲染自定义深度 (Render Custom Depth)
+ * 这是一个特殊的渲染通道。当一个物体的这个选项被开启时，它会额外地被渲染到一个单独的“自定义深度”缓冲中。
+ * 后期处理材质 (Post Process Material) 可以读取这个缓冲，并根据其中的信息（通常是深度值）来绘制
+ * 各种效果，最常见的就是在物体边缘绘制一个描边（Outline），从而实现高亮。
+ *
+ * @par 详细流程
+ * 1.  **状态检查**: 首先检查 `bReached` 标志。只有当这个检查点**尚未**被激活时，才允许高亮。这是一个很好的游戏性设计，可以防止玩家与已经激活的、无交互意义的物体进行不必要的视觉互动。
+ * 2.  **启用效果**: 如果可以高亮，则调用 `CheckpointMesh->SetRenderCustomDepth(true)` 来开启自定义深度渲染。
+ *
+ * @par 注意事项
+ * - 这个函数本身只负责“打开开关”，真正的高亮效果是由一个全局的后期处理材质实现的。
+ */
+void ACheckpoint::HighlightActor_Implementation()
+{
+	// 检查这个检查点是否已经被玩家触及 (bReached)。
+	// (为什么这么做): 这是一个很好的游戏逻辑判断。如果检查点已经被激活，
+	// 它可能就不再是一个可交互的物体了，因此不应该再响应高亮提示，避免误导玩家。
+	if (!bReached)
+		{
+			// SetRenderCustomDepth(true) 是实现描边高亮效果的第一步。
+			// 它会告诉渲染器：“把这个 CheckpointMesh 物体也画一份到特殊的‘自定义深度’通道里去。”
+			// 之后，一个全局的后期处理材质会检测到这个通道里有东西，并为它画上描边。
+			CheckpointMesh->SetRenderCustomDepth(true);
+		}
+	
+}
+
+/**
+ * @brief (HighlightInterface 接口实现) 当需要取消高亮此检查点时调用，关闭其自定义深度渲染。
+ *
+ * @par 功能说明
+ * 这是 `IHighlightInterface` 中 `UnHighlightActor` 函数的 C++ 实现。
+ * 当鼠标移开或者其他取消高亮的条件满足时，此函数被调用。
+ * 它的作用很简单，就是关闭 `CheckpointMesh` 的自定义深度渲染，让后期处理材质不再能“看到”它，
+ * 从而移除描边高亮效果。
+ */
+void ACheckpoint::UnHighlightActor_Implementation()
+{
+	// 不论检查点是否被激活，当取消高亮时，都应该关闭这个效果，以确保状态一致。
+	// 所以这里不需要 if (!bReached) 检查。
+	CheckpointMesh->SetRenderCustomDepth(false);
+}
+
+/**
+ * @brief (接口函数实现) 获取并返回一个预设的“移动目标点”位置。
+ * @param OutDestination [out] 一个通过引用传递的 FVector，此函数会将其值修改为目标位置。
+ *
+ * @par 功能说明
+ * 这是某个接口（例如 `IMoveTargetInterface`）中定义的 `SetMoveToLocation` 函数的 C++ 实现。
+ * `_Implementation` 后缀表明这是一个 `BlueprintNativeEvent` 的原生 C++ 版本。
+ * 该函数的作用是向外部调用者提供一个精确的世界坐标位置。这个位置由附着在此 `ACheckpoint` Actor
+ * 上的一个名为 `MoveToComponent` 的组件来定义。
+ *
+ * @par 使用场景
+ * 这个函数通常用于 AI 行为或玩家移动系统中。例如，当玩家激活这个检查点时，一个 NPC 盟友
+ * 可能需要移动到检查点旁的一个特定“集合点”进行等待。AI 控制器可以通过接口查询这个检查点，
+ * 调用此函数来获取那个精确的集合点坐标，然后命令 NPC 移动过去。
+ *
+ * @par 详细流程
+ * 1.  函数被调用，并传入一个 `FVector` 的引用 `OutDestination`。
+ * 2.  获取 `MoveToComponent` 组件的当前世界坐标 (`GetComponentLocation()`)。
+ *     - `MoveToComponent` 很可能是一个 `USceneComponent` 或其子类，被设计师在蓝图编辑器中放置在检查点 Actor 的一个相对位置上，以标记这个“移动目标点”。
+ * 3.  将获取到的位置坐标赋值给 `OutDestination`。因为 `OutDestination` 是引用传递，这个修改会直接影响到调用方传入的那个 `FVector` 变量。
+ *
+ * @par 注意事项
+ * - **参数是输出 (Out)**: 函数名 `SetMoveToLocation` 可能会让人误以为是“设置”检查点的位置，但从参数 `FVector& OutDestination` 来看，它的实际作用是“设置调用者的目标位置”，是一个 Getter 功能。在 Unreal 中，很多接口函数会通过这种输出参数的方式来“返回”值。
+ * - `MoveToComponent` 必须在蓝图或 C++ 构造函数中被正确地创建和附加，否则 `MoveToComponent->GetComponentLocation()` 会导致程序崩溃。
+ */
+void ACheckpoint::SetMoveToLocation_Implementation(FVector& OutDestination)
+{
+	OutDestination = MoveToComponent->GetComponentLocation();
+}
 
 
 /**
@@ -106,11 +192,15 @@ void ACheckpoint::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// (为什么这么做): 这是 Unreal Engine 中动态绑定委托（Delegate）的标准方式。
-	// `OnComponentBeginOverlap` 是 USphereComponent 的一个多播委托。
-	// `AddDynamic` 将一个函数（本类的 OnSphereOverlap）绑定到这个委托上。
-	// 从此以后，每当 Sphere 组件检测到有物体进入其范围时，引擎就会自动调用我们提供的 `ACheckpoint::OnSphereOverlap` 函数。
-	Sphere->OnComponentBeginOverlap.AddDynamic(this,&ACheckpoint::OnSphereOverlap);
+	if (bBindOverlapCallback)
+	{
+		// (为什么这么做): 这是 Unreal Engine 中动态绑定委托（Delegate）的标准方式。
+		// `OnComponentBeginOverlap` 是 USphereComponent 的一个多播委托。
+		// `AddDynamic` 将一个函数（本类的 OnSphereOverlap）绑定到这个委托上。
+		// 从此以后，每当 Sphere 组件检测到有物体进入其范围时，引擎就会自动调用我们提供的 `ACheckpoint::OnSphereOverlap` 函数。
+		Sphere->OnComponentBeginOverlap.AddDynamic(this,&ACheckpoint::OnSphereOverlap);
+	}
+	
 }
 
 

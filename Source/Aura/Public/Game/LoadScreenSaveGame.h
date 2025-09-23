@@ -153,6 +153,10 @@ public:
 	UPROPERTY()
 	FString MapName = FString("Default Map Name"); // 玩家最后所在的地图名 (用于UI显示)
 
+	//映射地图资产名称
+	UPROPERTY()
+	FString MapAssetName = FString("Default Map Asset Name");
+	
 	UPROPERTY()
 	FName PlayerStartTag;// 玩家下次加载时应该出现的出生点 Tag
 	

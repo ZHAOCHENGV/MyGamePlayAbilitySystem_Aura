@@ -1,13 +1,13 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+ // Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Interation/EnemyInterface.h"
 #include "GameplayTagContainer.h"
 #include "AuraPlayerController.generated.h"
 
 
+ class IHighlightInterface;
 class AMagicCircle;
 class UNiagaraSystem;
 class UDamageTextComponent;
@@ -17,6 +17,15 @@ class UAuraInputConfig;
 class AAuraHUD;
 class UInputMappingContext;
 class UInputAction;
+
+ enum class ETargetingStatus : uint8
+ {
+ 	TargetingEnemy,//瞄准敌人
+	TargetingNonEnemy,//非敌方瞄准
+	NotTargeting//不瞄准
+ };
+
+
 
 //struct定义FInputActionValue这是一个结构体
 struct FInputActionValue;
@@ -79,10 +88,12 @@ private:
 	void CursorTrace();
  
 
-	TScriptInterface<IEnemyInterface>LastActor;
-	TScriptInterface<IEnemyInterface>ThisActor;
+	TObjectPtr<AActor> LastActor;
+	TObjectPtr<AActor> ThisActor;
 	//创建光标击中参数
 	FHitResult CursorHit;
+	static void HighlightActor(AActor* InActor);
+	static void UnHighlightActor(AActor* InActor);
 
 	
 	UPROPERTY(EditDefaultsOnly,Category = "Input")
@@ -110,8 +121,7 @@ private:
 	float ShortPressThreshold = 0.5f;
 	//自动行走
 	bool bAutoRunning = false;
-	//瞄准目标
-	bool bTargeting = false;
+	ETargetingStatus TargetingStatus = ETargetingStatus::NotTargeting;
 
 	//自动接受到达半径
 	UPROPERTY(EditDefaultsOnly)

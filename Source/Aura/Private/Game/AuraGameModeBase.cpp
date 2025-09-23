@@ -160,7 +160,7 @@ void AAuraGameModeBase::SaveInGameProgressData(ULoadScreenSaveGame* SaveObject)
  * 8.  将这个结构体添加到地图的 Actor 记录中。
  * 9.  遍历结束后，将更新后的存档对象写回磁盘。
  */
-void AAuraGameModeBase::SaveWorldState(UWorld* World) const
+void AAuraGameModeBase::SaveWorldState(UWorld* World, const FString& DestinationMapAssetName) const
 {
 	// 步骤 1/5: 准备工作
 	FString WorldName = World->GetMapName();// 获取关卡资源名，例如 "UEDPIE_0_L_TestMap"。
@@ -172,6 +172,13 @@ void AAuraGameModeBase::SaveWorldState(UWorld* World) const
 	// 使用之前的辅助函数获取当前存档对象。
 	if (ULoadScreenSaveGame* SaveGame = GetSaveSlotData(AuraGI->LoadSlotName, AuraGI->LoadSlotIndex))
 	{
+		//如果目标地图资产名称不等于空
+		if (DestinationMapAssetName != FString(""))
+		{
+			//设置保存的地图名称和地图资产名称
+			SaveGame->MapAssetName = DestinationMapAssetName;
+			SaveGame->MapName = GetMapNameFromMapAssetName(DestinationMapAssetName);
+		}
 		// 步骤 2/5: 确保地图记录存在
 		if (!SaveGame->HasMap(WorldName)) // 检查存档里是否已经有这个地图的数据了。
 		{
@@ -367,6 +374,55 @@ AActor* AAuraGameModeBase::ChoosePlayerStart_Implementation(AController* Player)
 	}
 	// 如果场景中连一个 APlayerStart 都没有，就返回空指针。这可能会导致生成玩家失败。
 	return nullptr;
+}
+
+
+
+/**
+ * @brief 根据地图的资源名称（Asset Name）从 GameMode 内部的地图注册表中查找其对应的显示名称（Key）。
+ * @param MapAssetName 地图资源的 FString 名称，例如 "L_MainVillage"。
+ * @return 如果找到匹配项，返回在 TMap 中作为 Key 的、用于显示的地图名称（例如 "主村庄"）。如果找不到，返回一个空字符串。
+ *
+ * @par 功能说明
+ * 这个函数是 `TravelToMap` 函数中使用 `Maps.FindChecked(DisplayName)` 逻辑的一个逆向操作。
+ * `Maps` 这个 TMap 存储的是 `(显示名称 -> 地图资源)` 的映射，例如 `("主村庄" -> TSoftObjectPtr("/Game/Maps/L_MainVillage"))`。
+ * 此函数的作用是，当只知道资源的名称 "L_MainVillage" 时，反过来查找到它对应的显示名称 "主村庄"。
+ *
+ * @par 使用场景
+ * 这个功能可能用于 UI 显示或数据记录。例如，在 `SaveWorldState` 时，我们通过 `World->GetMapName()` 得到了资源的名称，
+ * 但在存档文件中，我们可能希望存储的是对玩家更友好的显示名称。通过调用这个函数，就可以完成这种转换。
+ *
+ * @par 详细流程
+ * 1.  遍历 `Maps` 这个 `TMap` 中的每一个键值对（`TTuple`）。
+ * 2.  对于每一个键值对，获取其 `Value`，也就是 `TSoftObjectPtr<UWorld>`。
+ * 3.  将这个软引用指针转换为软对象路径 (`ToSoftObjectPath()`)。
+ * 4.  从路径中提取出资源的 FName (`GetAssetFName()`)。
+ * 5.  将提取出的 FName 与传入的 `MapAssetName` 进行比较。
+ * 6.  如果匹配，则返回这个键值对的 `Key`，也就是我们想要的显示名称。
+ * 7.  如果遍历完整个 TMap 都没有找到匹配项，则返回一个空的 FString。
+ *
+ * @par 注意事项
+ * - `const` 关键字表明此函数是只读的，不会修改 GameMode 的任何成员变量。
+ * - 这种遍历查找的效率是 O(N)，其中 N 是注册的地图数量。对于通常数量不多的地图列表来说，性能完全可以接受。
+ */
+FString AAuraGameModeBase::GetMapNameFromMapAssetName(const FString& MapAssetName) const
+{
+	// `for (auto& Map : Maps)` 遍历 `Maps` TMap 中的每一个键值对。
+	// `Map` 在每次循环中会是一个 TTuple<FString, TSoftObjectPtr<UWorld>> 的引用。
+	for (auto& Map : Maps)
+	{
+		// `Map.Value` 获取键值对中的值，即 TSoftObjectPtr<UWorld>。
+		// .ToSoftObjectPath() 将软引用转换为一个 FSoftObjectPath 结构体，它包含了资源的完整路径。
+		// .GetAssetFName() 从路径中提取出不带路径的资源名，类型是 FName。
+		// 我们将 FName 隐式转换为 FString 来与 MapAssetName 进行比较。
+		if (Map.Value.ToSoftObjectPath().GetAssetName() == MapAssetName)
+		{
+			// 如果资源名匹配，就返回这个键值对的 Key，也就是我们想要的显示名称。
+			return Map.Key;
+		}
+	}
+	// 如果循环结束都没有找到匹配的，返回一个空字符串表示查找失败。
+	return FString();
 }
 
 /**

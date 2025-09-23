@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Character/CharacterBase.h"
 #include "Interation/EnemyInterface.h"
+#include "Interation/HighlightInterface.h"
 #include "UI/WidgetController/OverlayWidgetController.h"
 #include "EnemyCharacter.generated.h"
 
@@ -15,7 +16,7 @@ class UBehaviorTree;
  * 
  */
 UCLASS()
-class AURA_API AEnemyCharacter : public ACharacterBase,public IEnemyInterface
+class AURA_API AEnemyCharacter : public ACharacterBase,public IEnemyInterface, public IHighlightInterface
 {
 	GENERATED_BODY()
 public:
@@ -23,11 +24,16 @@ public:
 	//控制时
 	virtual void PossessedBy(AController* NewController) override;
 	AEnemyCharacter();
-	/** Enemy 接口函数*/
+	
+	/*HighlightInterface 接口函数*/
 	//重载接口的 突出演员 事件
-	virtual void HigHlihtActor()override ;
-	//重载接口的 不突出演员 事件
-	virtual void UnHigHlightActor()override;
+	virtual void HighlightActor_Implementation()override ;
+	//重载HighlightInterface接口的 不突出演员 事件
+	virtual void UnHighlightActor_Implementation()override;
+	virtual void SetMoveToLocation_Implementation(FVector& OutDestination) override;
+	/*结束HighlightInterface 接口函数*/
+	
+	/** Enemy 接口函数*/
 	virtual void SetCombatTarget_Implementation(AActor* InCombatTarget) override;
 	virtual AActor* GetCombatTarget_Implementation() const override;
 	/** 结束Enemy 接口函数*/

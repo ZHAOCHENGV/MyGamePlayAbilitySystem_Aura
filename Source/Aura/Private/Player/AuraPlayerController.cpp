@@ -17,6 +17,8 @@
 #include "Input/AuraInputComponent.h"
 #include "Character/CharacterBase.h"
 #include "Components/DecalComponent.h"
+#include "Interation/EnemyInterface.h"
+#include "Interation/HighlightInterface.h"
 #include "UI/Widget/DamageTextComponent.h"
 
 
@@ -230,8 +232,8 @@ void AAuraPlayerController::CursorTrace()
 {
 	if (GetASC() && GetASC()->HasMatchingGameplayTag(FAuraGamePlayTags::Get().Player_Block_CursorTrace))
 	{
-		if (LastActor)LastActor->UnHigHlightActor();
-		if (ThisActor)ThisActor->UnHigHlightActor();
+		UnHighlightActor(ThisActor);
+		UnHighlightActor(LastActor);
 		LastActor = nullptr;
 		ThisActor = nullptr;
 		return;
@@ -243,18 +245,40 @@ void AAuraPlayerController::CursorTrace()
 	//如果未击中，则返回
 	if(!CursorHit.bBlockingHit)return;
 	LastActor = ThisActor;
-	//获取继承接口的Actor  
-	ThisActor =CursorHit.GetActor();
+	if (IsValid(CursorHit.GetActor()) && CursorHit.GetActor()->Implements<UHighlightInterface>())
+	{
+		//获取继承接口的Actor  
+		ThisActor = CursorHit.GetActor();
+	}
+	else
+	{
+		ThisActor = nullptr;
+	}
 
 	//光标追踪
 	if(LastActor != ThisActor)
 	{
-		if (LastActor)LastActor->UnHigHlightActor();
-		if (ThisActor)ThisActor->HigHlihtActor();
-		
+		UnHighlightActor(LastActor);
+		HighlightActor(ThisActor);
 	}
 	
 
+}
+
+void AAuraPlayerController::HighlightActor(AActor* InActor)
+{
+	if (IsValid(InActor) && InActor->Implements<UHighlightInterface>())
+	{
+		IHighlightInterface::Execute_HighlightActor(InActor);
+	}
+}
+
+void AAuraPlayerController::UnHighlightActor(AActor* InActor)
+{
+	if (IsValid(InActor) && InActor->Implements<UHighlightInterface>())
+	{
+		IHighlightInterface::Execute_UnHighlightActor(InActor);
+	}
 }
 
 /**
@@ -274,10 +298,18 @@ void AAuraPlayerController::AbilityInputTagPressed(FGameplayTag InputTag)
 	// 判断输入是否为“鼠标左键”（完全匹配 LMB Tag）
 	if (InputTag.MatchesTagExact(FAuraGamePlayTags::Get().InputTag_LMB)) // LMB 按下
 	{
-		// 若当前存在 ThisActor（表示有选中目标），则进入目标锁定；否则不锁定
-		bTargeting = ThisActor ? true : false; // 根据是否有目标切换锁定
-		// 无论是否锁定，按下 LMB 都会关闭“自动奔跑”
-		bAutoRunning = false; // 停止自动寻路/奔跑
+		if (IsValid(ThisActor))
+		{
+			// 若当前存在 ThisActor（表示有选中目标），则进入目标锁定；否则不锁定
+			TargetingStatus = ThisActor->Implements<UEnemyInterface>() ? ETargetingStatus::TargetingEnemy : ETargetingStatus::TargetingNonEnemy;
+			// 无论是否锁定，按下 LMB 都会关闭“自动奔跑”
+			bAutoRunning = false; // 停止自动寻路/奔跑
+		}
+		else
+		{
+			TargetingStatus = ETargetingStatus::NotTargeting;
+		}
+	
 	}
 	// 如果 ASC 存在，则把“按下”事件透传给 ASC（用于触发/预测能力）
 	if (GetASC())
@@ -316,16 +348,26 @@ void AAuraPlayerController::AbilityInputTagReleased(FGameplayTag InputTag)
 	if (GetASC()) GetASC()->AbilityInputTagReleased(InputTag); // 通知能力系统
 	
 	// 若当前不在目标锁定，且不处于自动奔跑状态 → 可能触发一次“点击寻路”
-	if(!bTargeting && !bAutoRunning) 
+	if(TargetingStatus != ETargetingStatus::TargetingEnemy && !bAutoRunning) 
 	{
 		// 取当前玩家控制的 Pawn
 		const APawn * ControlledPawn = GetPawn(); // 受控角色
 		// 若按住时间小于“短按阈值”，且 Pawn 有效 → 视为一次“点击移动”
 		if (FollowTime <= ShortPressThreshold && ControlledPawn)
 		{
+			if (IsValid(ThisActor) && ThisActor->Implements<UHighlightInterface>())
+			{
+				IHighlightInterface::Execute_SetMoveToLocation(ThisActor, CachedDestination);
+			}
+			else if (GetASC() && !GetASC()->HasMatchingGameplayTag(FAuraGamePlayTags::Get().Player_Block_InputPressed))
+			{
+				// 在点击位置播放一个 Niagara 效果，作为点击反馈
+				UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, ClickNiagaraSystem, CachedDestination); // 点击特效
+			}
 			// 使用导航系统同步计算从 Pawn 到 CachedDestination 的路径
 			if (UNavigationPath * NavPath = UNavigationSystemV1::FindPathToLocationSynchronously(this,ControlledPawn->GetActorLocation(),CachedDestination)) // 查路径
 			{
+				
 				// 清空样条上的旧路径点
 				Spline->ClearSplinePoints(); // 清路径
 				// 把导航路径的各点写入样条（用于可视化或沿样条移动）
@@ -343,18 +385,14 @@ void AAuraPlayerController::AbilityInputTagReleased(FGameplayTag InputTag)
 					bAutoRunning = true; // 启动自动奔跑
 				}
 			}
-			if (GetASC() && !GetASC()->HasMatchingGameplayTag(FAuraGamePlayTags::Get().Player_Block_InputPressed))
-			{
-				// 在点击位置播放一个 Niagara 效果，作为点击反馈
-				UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, ClickNiagaraSystem, CachedDestination); // 点击特效
-			}
+			
 			
 		}
 	
 		// 释放后重置“按住计时”
 		FollowTime = 0.f; // 计时清零
 		// 释放左键后退出“目标锁定”（与按下时的进入相对）
-		bTargeting = false; // 退出锁定
+		TargetingStatus = ETargetingStatus::NotTargeting; // 退出锁定
 	}
 }
 
@@ -384,7 +422,7 @@ void AAuraPlayerController::AbilityInputTagHeld(FGameplayTag InputTag)
 	}
 
 	// 左键被按住：若当前在目标锁定模式或按下 Shift，则把 Held 交给 ASC（技能持续输入）
-	if (bTargeting||bShiftKeyDown)
+	if (TargetingStatus == ETargetingStatus::TargetingEnemy||bShiftKeyDown)
 	{
 		if (GetASC())
 		{

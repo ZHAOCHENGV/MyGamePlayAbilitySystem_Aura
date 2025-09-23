@@ -41,7 +41,7 @@ public:
 	void SaveInGameProgressData(ULoadScreenSaveGame* SaveObject);
 
 	//保存世界状态
-	void SaveWorldState(UWorld* World) const;
+	void SaveWorldState(UWorld* World, const FString& DestinationMapAssetName = FString("")) const;
 	//加载世界状态
 	void LoadWorldState(UWorld* World) const;
 	
@@ -64,6 +64,8 @@ public:
 	void TravelToMap(UMVVM_LoadSlot* Slot);
 
 	virtual AActor* ChoosePlayerStart_Implementation(AController* Player) override;
+
+	FString GetMapNameFromMapAssetName(const FString& MapAssetName) const;
 
 protected:
 	virtual void BeginPlay() override;
