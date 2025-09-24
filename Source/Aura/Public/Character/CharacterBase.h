@@ -123,7 +123,9 @@ public:
 	//获取生命周期复制的 props (bIsStunned)
 	//注意：如有变量为Replicated，则必须GetLifetimeReplicatedProps
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const ;
-	
+
+	//设置角色职业
+	void SetCharacterClass(ECharacterClass InClass) {CharacterClass = InClass;};
 protected:
 	//游戏开始
 	virtual void BeginPlay() override;
