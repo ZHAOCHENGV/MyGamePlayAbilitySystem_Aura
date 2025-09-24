@@ -68,7 +68,7 @@ public:
 	UAnimMontage* GetHitReactMontage();
 
 	//死亡
-	virtual void Die() = 0;
+	virtual void Die(const FVector& DeathImpulse) = 0;
 	
 	
 	//是否死亡

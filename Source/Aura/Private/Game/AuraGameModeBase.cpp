@@ -7,6 +7,7 @@
 #include "Aura/AuraLogChannels.h"
 #include "Game/AuraGameInstance.h"
 #include "Game/LoadScreenSaveGame.h"
+#include "GameFramework/Character.h"
 #include "GameFramework/PlayerStart.h"
 #include "Interation/SaveInterface.h"
 #include "Kismet/GameplayStatics.h"
@@ -46,6 +47,7 @@ void AAuraGameModeBase::SaveSlotData(UMVVM_LoadSlot* LoadSlot, int32 SlotIndex)
 	LoadScreenSaveGame->MapName = LoadSlot->GetMapName();
 	LoadScreenSaveGame->SaveSlotStatus = Taken; // 将存档状态标记为“已占用”。
 	LoadScreenSaveGame->PlayerStartTag = LoadSlot->PlayerStartTag;
+	LoadScreenSaveGame->MapAssetName = LoadSlot->MapAssetName;
 	// 调用引擎的静态函数，将内存中的存档对象写入到磁盘。文件名由 SlotName 和 SlotIndex 共同决定。
 	UGameplayStatics::SaveGameToSlot(LoadScreenSaveGame, LoadSlot->GetLoadSlotName(), SlotIndex);
 }
@@ -423,6 +425,14 @@ FString AAuraGameModeBase::GetMapNameFromMapAssetName(const FString& MapAssetNam
 	}
 	// 如果循环结束都没有找到匹配的，返回一个空字符串表示查找失败。
 	return FString();
+}
+
+void AAuraGameModeBase::PlayerDied(ACharacter* DeadCharacter)
+{
+	ULoadScreenSaveGame* SaveGame = RetrieveInGameSaveData();
+	if (!IsValid(SaveGame)) return;
+
+	UGameplayStatics::OpenLevel(DeadCharacter, FName(SaveGame->MapAssetName));
 }
 
 /**

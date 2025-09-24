@@ -206,7 +206,8 @@ void UAuraAttributeSet::HandleIncomingDamage(const FEffectProperties& Props)
 			ICombatInterface* CombatInterface = Cast<ICombatInterface>(Props.TargetAvatarActor); // 目标接口
 			if (CombatInterface)
 			{
-				CombatInterface->Die(); // 触发死亡
+				FVector Impulse = UAuraAbilitySystemLibrary::GetDeathImpulse(Props.EffectContextHandle);
+				CombatInterface->Die(UAuraAbilitySystemLibrary::GetDeathImpulse(Props.EffectContextHandle)); // 触发死亡
 			}
 			// 步骤 3.3.2：给来源发经验（如有）
 			SendXPEvent(Props); // 经验事件（由上层实现）

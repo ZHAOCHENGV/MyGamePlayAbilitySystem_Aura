@@ -9,6 +9,7 @@
 #include "Interation/PlayerInterface.h"
 #include "Kismet/GameplayStatics.h"
 
+
 ACheckpoint::ACheckpoint(const FObjectInitializer& ObjectInitializer)
 : Super(ObjectInitializer)
 {
@@ -168,9 +169,16 @@ void ACheckpoint::OnSphereOverlap(UPrimitiveComponent* OverlappedComponent, AAct
 		bReached = true; // 标记此检查点已被触及。
 		if (AAuraGameModeBase* AuraGameMode = Cast<AAuraGameModeBase>(UGameplayStatics::GetGameMode(this)))
 		{
+
+			const UWorld* World = GetWorld();
+			//获取地图名称
+			FString MapName = World->GetMapName();
+			//删除引擎自动生成的名称
+			MapName.RemoveFromStart(World->StreamingLevelsPrefix);
+			
 			// 请求 GameMode 保存整个世界的当前状态。因为我们刚刚修改了 bReached，
 			// 所以这次保存会把 `bReached = true` 这个新状态写入磁盘。
-			AuraGameMode->SaveWorldState(GetWorld());
+			AuraGameMode->SaveWorldState(GetWorld(),MapName);
 		}
 		
 		// 步骤 3/4: 通知玩家更新其出生点

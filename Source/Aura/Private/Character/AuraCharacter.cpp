@@ -440,6 +440,63 @@ int32 AAuraCharacter::GetPlayerLevel_Implementation()
 }
 
 
+
+
+/**
+ * @brief 在角色死亡时被调用，执行死亡逻辑，包括通知 GameMode 和分离摄像机。
+ * @param DeathImpulse 施加到角色尸体上的物理冲击力，用于制作布娃娃效果。
+ *
+ * @par 功能说明
+ * 这是角色死亡时的核心响应函数。它覆盖了父类的 `Die` 函数，在执行完父类的通用死亡逻辑
+ * （很可能包含播放死亡动画、开启布娃娃物理、禁用输入等）之后，增加了本游戏特有的逻辑。
+ *
+ * @par 详细流程
+ * 1.  **调用父类实现**: `Super::Die(DeathImpulse)` 确保了所有在父类中定义的通用死亡行为被首先执行。这是一个至关重要的步骤，保证了继承链的正确性。
+ * 2.  **设置死亡计时器**:
+ *     - 创建一个 `FTimerDelegate` (计时器委托)。
+ *     - 使用 `BindLambda` 将一个匿名函数绑定到这个委托上。
+ *     - 这个 Lambda 函数的核心任务是获取 `GameMode` 并调用其 `PlayerDied` 方法，将自己作为参数传递过去。
+ * 3.  **启动计时器**: 使用 `GetWorldTimerManager().SetTimer` 启动一个一次性的计时器。
+ *     - `DeathTime` 秒后，上面 Lambda 中定义的逻辑将被执行。
+ *     - (为什么用计时器？) 这是为了在角色播放完死亡动画或布娃娃效果稳定一段时间后，再执行游戏逻辑（如显示“你已死亡”的 UI 或重新加载关卡），而不是在死亡的瞬间就立即跳转，这样体验更好。
+ * 4.  **分离摄像机**: 调用 `TopDownCameraComponent->DetachFromComponent`，将摄像机从其父组件（通常是弹簧臂 `SpringArm`）上分离。
+ *     - (为什么这么做？) 在俯视角游戏中，摄像机通常会跟随角色移动。角色死亡并变成布娃娃后，会倒在地上或被炸飞。如果不分离摄像机，摄像机也会跟着尸体一起翻滚，导致镜头剧烈晃动。将其分离并保持其世界变换 (`KeepWorldTransform`)，可以让镜头停留在角色死亡时的位置，平稳地观察尸体，大大提升了玩家体验。
+ */
+void AAuraCharacter::Die(const FVector& DeathImpulse)
+{
+	// 步骤 1/4: 调用父类的 Die 函数，执行基础的死亡逻辑 (如开启布娃娃物理)。
+	Super::Die(DeathImpulse);
+
+	// 步骤 2/4: 创建一个计时器委托，用于在延迟后执行代码。
+	FTimerDelegate DeathTimerDelegate;
+	// BindLambda 允许我们在原地定义一个匿名函数并绑定到委托。
+	// [this] 是捕获列表，让 Lambda 内部可以访问当前 AAuraCharacter 实例的成员。
+	DeathTimerDelegate.BindLambda([this]()
+	{
+		// --- 这段代码将在 DeathTime 秒后执行 ---
+		AAuraGameModeBase* AuraGM = Cast<AAuraGameModeBase>(UGameplayStatics::GetGameMode(this));
+		if (AuraGM)
+		{
+			// 通知 GameMode，这个玩家角色已经死亡。
+			// GameMode 接下来可能会处理重生逻辑、显示结束画面或加载上一个检查点。
+			AuraGM->PlayerDied(this);
+		}
+	});
+	// 步骤 3/4: 启动一个一次性的计时器。
+	// DeathTimer 是 .h 文件中声明的 FTimerHandle 成员变量，用于管理这个计时器。
+	// DeathTime 是一个 float 变量，表示延迟的秒数。
+	// false 表示这个计时器不循环。
+	GetWorldTimerManager().SetTimer(DeathTimer, DeathTimerDelegate, DeathTime, false);
+
+	// 步骤 4/4: 将俯视角摄像机从其附着的组件上分离。
+	// (为什么这么做): 这样做可以防止摄像机跟随死亡后变成布娃娃的身体一起移动或翻滚，
+	// 从而保持一个稳定的观察视角。
+	// FDetachmentTransformRules::KeepWorldTransform 确保摄像机在分离后，其在世界空间中的位置和旋转保持不变。
+	TopDownCameraComponent->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
+	
+}
+
+
 /**
  * @brief 眩晕标志（bIsStunned）在客户端被复制更新时的回调：添加/移除输入阻断类 Tag，并切换眩晕特效组件
  *

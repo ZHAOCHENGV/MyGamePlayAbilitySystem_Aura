@@ -85,6 +85,7 @@ void UMVVM_LoadScreen::NewSlotButtonPressed(int32 Slot, const FString& EnteredNa
 	// (为什么这么做): 游戏的核心逻辑（如存盘、读盘）通常放在 GameMode 中，因为它在服务器上是权威的。
 	// Cast<> 是一种安全的类型转换，如果 UGameplayStatics::GetGameMode(this) 返回的不是 AAuraGameModeBase 或其子类，AuraGameMode 会是 nullptr。
 	AAuraGameModeBase* AuraGameMode = Cast<AAuraGameModeBase>(UGameplayStatics::GetGameMode(this));
+	
 	if (AuraGameMode)// 这是一个关键的安全检查，防止 GameMode 类型不匹配时程序崩溃。
 	{
 		// 步骤 2/2: 更新 ViewModel 并请求保存
@@ -93,6 +94,7 @@ void UMVVM_LoadScreen::NewSlotButtonPressed(int32 Slot, const FString& EnteredNa
 		LoadSlots[Slot]->SetPlayerLevel(1);
 		LoadSlots[Slot]->SlotStatus = Taken;// 更新 ViewModel 的内部状态为“已占用”。
 		LoadSlots[Slot]->PlayerStartTag = AuraGameMode->DefaultPlayerStartTag;
+		LoadSlots[Slot]->MapAssetName = AuraGameMode->DefaultMap.ToSoftObjectPath().GetAssetName();
 		
 		AuraGameMode->SaveSlotData(LoadSlots[Slot], Slot);// 调用 GameMode 的功能，传入 ViewModel 和槽位索引来执行实际的存档操作。
 		LoadSlots[Slot]->InitializeSlot();// 通知该槽位根据新状态刷新其 UI。
@@ -101,6 +103,10 @@ void UMVVM_LoadScreen::NewSlotButtonPressed(int32 Slot, const FString& EnteredNa
 		AuraGameInstance->PlayerStartTag = AuraGameMode->DefaultPlayerStartTag;
 		AuraGameInstance->LoadSlotName = LoadSlots[Slot]->GetLoadSlotName();
 		AuraGameInstance->LoadSlotIndex = LoadSlots[Slot]->SlotIndex;
+	}
+	else
+	{
+		GEngine->AddOnScreenDebugMessage(1, 5.f, FColor::Red, FString(TEXT("请开启单人游戏！！！")));
 	}
 }
 

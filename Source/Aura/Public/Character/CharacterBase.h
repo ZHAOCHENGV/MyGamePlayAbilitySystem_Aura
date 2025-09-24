@@ -39,7 +39,7 @@ public:
 	
 	//多播函数 Death（客户端和服务器都要执行死亡相关逻辑）
 	UFUNCTION(NetMulticast, Reliable)
-	virtual void MulticastHandleDeath();
+	virtual void MulticastHandleDeath(const FVector& DeathImpulse);
 
 	/*Combatinterface接口开始*/
 	//重新接口获取蒙太奇事件
@@ -49,7 +49,7 @@ public:
 	virtual FVector GetCombatSocketLocation_Implementation(const FGameplayTag& MontageTag) override;
 	
 	//死亡事件
-	virtual void Die() override;
+	virtual void Die(const FVector& DeathImpulse) override;
 
 	//是否死亡
 	virtual bool IsDead_Implementation() const override;
@@ -123,7 +123,9 @@ public:
 	//获取生命周期复制的 props (bIsStunned)
 	//注意：如有变量为Replicated，则必须GetLifetimeReplicatedProps
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const ;
-	
+
+	//设置角色职业
+	void SetCharacterClass(ECharacterClass InClass) {CharacterClass = InClass;};
 protected:
 	//游戏开始
 	virtual void BeginPlay() override;
@@ -199,6 +201,7 @@ protected:
 	TObjectPtr<UMaterialInstance> WeaponDissolveMaterialInstance;
 
 	//死亡变量
+	UPROPERTY(BlueprintReadOnly)
 	bool bDead = false;
 
 	//血液特效

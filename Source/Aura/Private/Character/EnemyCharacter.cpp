@@ -99,11 +99,26 @@ int32 AEnemyCharacter::GetPlayerLevel_Implementation()
 	return Level;
 }
 
-void AEnemyCharacter::Die()
+void AEnemyCharacter::Die(const FVector& DeathImpulse)
 {
+	// 步骤 1/3: 设置 Actor 的生命周期。
+	// LifeSpan 是一个 float 类型的成员变量，在蓝图或 C++ 中预设。
+	// 这行代码意味着：“这个 Actor 将在 LifeSpan 秒后自动从游戏中移除。”
+	// 这是清理尸体、防止场景中尸体无限堆积导致性能下降的标准做法。
 	SetLifeSpan(LifeSpan);
-	if(EnemyAIController)EnemyAIController->GetBlackboardComponent()->SetValueAsBool(FName("Dead"), true);
-	Super::Die();
+	// 步骤 2/3: 通知 AI 控制器和行为树，本角色已死亡。
+	// EnemyAIController 应该是在 AI 被生成 (spawn) 时获取并缓存的 AIController 引用。
+	if(EnemyAIController)
+	{
+		// 获取 AI 控制器下的黑板组件，并将其名为 "Dead" 的布尔值设为 true。
+		// 行为树会响应这个值的变化，从而停止攻击、追逐等行为。
+		EnemyAIController->GetBlackboardComponent()->SetValueAsBool(FName("Dead"), true);
+	}
+	
+	// 步骤 3/3: 调用父类的 Die 函数。
+	// 这会执行更通用的死亡逻辑，比如开启布娃娃 (Ragdoll) 物理效果。
+	// 将这一步放在最后是正确的，因为我们希望先停止 AI 逻辑，再让物理接管身体。
+	Super::Die(DeathImpulse);
 }
 
 

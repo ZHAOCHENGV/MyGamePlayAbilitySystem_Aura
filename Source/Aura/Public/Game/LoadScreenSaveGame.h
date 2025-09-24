@@ -46,7 +46,7 @@ struct FSavedAbility
 
 	// 技能的当前等级
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
-	int32 AbilityLevel;
+	int32 AbilityLevel = 1;
 };
 
 

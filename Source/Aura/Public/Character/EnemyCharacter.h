@@ -40,7 +40,7 @@ public:
 
 	/** Combat 接口函数*/
 	virtual int32 GetPlayerLevel_Implementation()override;
-	virtual void Die() override;
+	virtual void Die(const FVector& DeathImpulse) override;
 	/** 结束Combat 接口函数*/
 
 	
@@ -58,6 +58,8 @@ public:
 	//声明周期
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Combat")
 	float LifeSpan = 5.f;
+
+	void SetLevel(int32 InLevel) {Level = InLevel;}
 protected:
 	virtual void BeginPlay() override;
 	//初始化 能力Actor信息集
