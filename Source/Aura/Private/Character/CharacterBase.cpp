@@ -403,19 +403,56 @@ void ACharacterBase::InitializeDefaultAttributes() const
 	ApplyEffectToSelf(DefaultSignificantAttributes,1.f);
 }
 
+
+
+/**
+ * @brief 在当前角色自己身上应用一个指定的 Gameplay Effect (GE)。
+ * @param GamePlayEffectClass 要应用的 GE 的蓝图类。
+ * @param Level 应用此 GE 时的等级，可以影响 GE 的持续时间或效果强度。
+ *
+ * @par 功能说明
+ * 这是一个通用的辅助函数（Helper Function），封装了在 Actor 自身上应用一个 GE 的标准流程。
+ * 通过将这个多步骤的过程封装成一个单行函数调用，可以极大地简化代码，减少重复，并降低出错的可能性。
+ *
+ * @par 使用场景
+ * - 角色走进一个治疗光环区域，需要给自己施加一个“持续回血”的 GE。
+ * - 角色使用一个技能，需要消耗法力值，可以通过给自己施加一个“扣除法力”的即时 GE 来实现。
+ * - 角色获得一个 Buff，例如“攻击力提升”，通过给自己施加一个有持续时间的 GE 来实现。
+ *
+ * @par 详细流程
+ * 1.  **有效性检查**: 使用 `check` 宏来确保 ASC (Ability System Component) 和传入的 `GamePlayEffectClass` 都是有效的。`check` 会在条件不满足时使程序崩溃，这是一种“快速失败”的设计，用于在开发阶段立即捕获空指针等严重错误。
+ * 2.  **创建效果上下文 (Context)**: 调用 `MakeEffectContext()` 创建一个 `FGameplayEffectContextHandle`。上下文可以携带关于这次 GE 应用的额外元数据，例如谁是施法者，谁是目标，使用了什么技能等。
+ * 3.  **指定源对象 (Source Object)**: 调用 `ContextHandle.AddSourceObject(this)`，将当前角色 (`this`) 设置为这次效果的来源。这在后续的效果计算（例如，根据施法者的等级计算伤害）或逻辑判断中非常有用。
+ * 4.  **创建效果规格 (Spec)**: 调用 `MakeOutgoingSpec()` 来创建一个 `FGameplayEffectSpecHandle`。Spec 是 GE 的一个“待应用的实例”，它将 GE 模板（`GamePlayEffectClass`）、等级和上下文打包在一起，并计算出所有最终的修改值。
+ * 5.  **应用效果**: 调用 `ApplyGameplayEffectSpecToTarget()`，将上一步创建的 Spec 应用到目标 ASC 上。由于是在自己身上应用，所以目标也是 `GetAbilitySystemComponent()`。
+ *
+ * @par 注意事项
+ * - `const` 关键字表明此函数不会修改 `ACharacterBase` 的任何成员变量。尽管它通过 ASC 间接修改了角色的状态（属性），但从 `ACharacterBase` 类本身的角度看，它是一个只读操作。
+ * - `check` 宏在发布版（Shipping Build）中通常会被编译掉，因此不应该用它来处理可预期的运行时错误，只应用于检查那些“理论上绝对不应该发生”的编程错误。
+ */
 void ACharacterBase::ApplyEffectToSelf(TSubclassOf<UGameplayEffect> GamePlayEffectClass, float Level) const
 {
-	// 检查 Ability System 组件是否有效
+	// (为什么用 check): check 是一种断言 (Assertion)。如果括号内的条件为 false，程序会立即崩溃并指出错误位置。
+	// 这在开发阶段非常有用，可以强制要求调用者必须提供有效的 ASC 和 GE Class，否则就是代码逻辑错误。
+	// 检查 Ability System Component 是否有效。GetAbilitySystemComponent() 是一个辅助函数，用于获取角色身上的 ASC。
 	check(IsValid(GetAbilitySystemComponent()));
-	// 检查 GameEffectClass 是否被设置
+	// 检查传入的 GE 蓝图类是否被有效设置。
 	check(GamePlayEffectClass);
-	// 创建一个 Gameplay Effect 的上下文，通常用于指定应用效果的目标信息
+	// 步骤 1/3: 准备效果上下文 (Context)
+	// MakeEffectContext() 创建一个包含了基础信息（如施法者、目标）的上下文对象。
 	FGameplayEffectContextHandle ContextHandle = GetAbilitySystemComponent()->MakeEffectContext();
-	//添加源对象
+	// AddSourceObject(this) 将当前角色实例作为“效果来源”添加到上下文中。
 	ContextHandle.AddSourceObject(this);
-	// 创建一个用于应用的 Gameplay Effect Spec，这里使用 GameEffectClass 作为默认效果，Level为强度，ContextHandle 为上下文
+
+	
+	// 步骤 2/3: 准备效果规格 (Spec)
+	// MakeOutgoingSpec() 将 GE 模板 (GamePlayEffectClass)、效果等级和上下文打包成一个“待发射”的效果规格。
+	// 在这一步，GAS 会根据等级和上下文信息，预计算出 GE 中所有 Modifier 的最终数值。
 	const FGameplayEffectSpecHandle SpecHandle = GetAbilitySystemComponent()->MakeOutgoingSpec(GamePlayEffectClass,Level,ContextHandle);
-	// 应用这个效果到当前的 Ability System 组件（目标为当前角色）
+	// 步骤 3/3: 将 Spec 应用到目标身上
+	// 因为是“对自己”应用，所以 Target 就是自己的 ASC。
+	// *SpecHandle.Data.Get() 是从 Spec Handle 中获取底层的 FGameplayEffectSpec 数据指针的标准方式。
+	// 在 UE5.1+ 中，更推荐直接传入 Spec Handle：ApplyGameplayEffectSpecToTarget(SpecHandle, GetAbilitySystemComponent());
 	GetAbilitySystemComponent()->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(),GetAbilitySystemComponent());
 }
 
