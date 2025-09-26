@@ -9,6 +9,7 @@
 #include "GAS/Data/CharacterClassInfo.h"
 #include "AuraAbilitySystemLibrary.generated.h"
 
+class ULootTiers;
 class ULoadScreenSaveGame;
 class UAbilityInfo;
 class AAuraHUD;
@@ -58,10 +59,15 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "AuraAbilitySystemLibrary|CharacterClassDefaults")
 	static UCharacterClassInfo* GetCharacterClassInfo(const UObject* WorldContextObject);
 
+	//获取战利品等级
+	UFUNCTION(BlueprintCallable, Category = "AuraAbilitySystemLibrary|CharacterClassDefaults", meta = (DefaultToSelf = "WorldContextObject") )
+	static ULootTiers* GetLootTiers(const UObject* WorldContextObject);
 
 	//获取技能信息
 	UFUNCTION(BlueprintCallable, Category = "AuraAbilitySystemLibrary|Ability")
 	static UAbilityInfo* GetAbilityInfo(const UObject* WorldContextObject);
+
+	
 	
 	//被阻止命中
 	UFUNCTION(BlueprintPure, Category = "AuraAbilitySystemLibrary|GameplayEffects")

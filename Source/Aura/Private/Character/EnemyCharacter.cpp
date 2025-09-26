@@ -114,7 +114,8 @@ void AEnemyCharacter::Die(const FVector& DeathImpulse)
 		// 行为树会响应这个值的变化，从而停止攻击、追逐等行为。
 		EnemyAIController->GetBlackboardComponent()->SetValueAsBool(FName("Dead"), true);
 	}
-	
+	//生成战利品
+	SpawnLoot();
 	// 步骤 3/3: 调用父类的 Die 函数。
 	// 这会执行更通用的死亡逻辑，比如开启布娃娃 (Ragdoll) 物理效果。
 	// 将这一步放在最后是正确的，因为我们希望先停止 AI 逻辑，再让物理接管身体。

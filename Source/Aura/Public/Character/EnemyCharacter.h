@@ -90,5 +90,8 @@ protected:
 	TObjectPtr<AEnemyAIController> EnemyAIController;
 
 	virtual void StunTagChanged(const FGameplayTag CallbackTag, int32 NewCount) override;
+
+	UFUNCTION(BlueprintImplementableEvent)
+	void SpawnLoot();
 	
 };

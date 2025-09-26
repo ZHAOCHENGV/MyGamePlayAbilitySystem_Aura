@@ -92,6 +92,6 @@ protected:
 	EEffectRemovalPolicy InfiniteEEffectRemovalPolicy = EEffectRemovalPolicy::RemoveOnEndOverlap;
 	
 	//效果等级
-	UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Applied Effects")
+	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category="Applied Effects")
 	float ActorLevel = 1.0f;
 };

@@ -16,11 +16,11 @@ struct FLootItem
 	TSubclassOf<AActor> LootClass;
 
 	//生成几率
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category ="LootTiers|Spawning")
+	UPROPERTY(EditAnywhere,  Category ="LootTiers|Spawning")
 	float ChanceToSpawn = 0.f;
 
 	//要生成的最大数量
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category ="LootTiers|Spawning")
+	UPROPERTY(EditAnywhere,  Category ="LootTiers|Spawning")
 	int32 MaxNumberToSpawn = 0.f;
 
 	// 战利品等级覆盖
@@ -37,5 +37,11 @@ UCLASS()
 class AURA_API ULootTiers : public UDataAsset
 {
 	GENERATED_BODY()
+public:
+
+	UFUNCTION(BlueprintCallable)
+	TArray<FLootItem> GetLootItems();
 	
+	UPROPERTY(EditDefaultsOnly, Category="LootTiers|Spawning")
+	TArray<FLootItem> LootItems;
 };
