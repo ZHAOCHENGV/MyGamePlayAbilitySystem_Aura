@@ -302,14 +302,14 @@ void AAuraPlayerController::AbilityInputTagPressed(FGameplayTag InputTag)
 		{
 			// 若当前存在 ThisActor（表示有选中目标），则进入目标锁定；否则不锁定
 			TargetingStatus = ThisActor->Implements<UEnemyInterface>() ? ETargetingStatus::TargetingEnemy : ETargetingStatus::TargetingNonEnemy;
-			// 无论是否锁定，按下 LMB 都会关闭“自动奔跑”
-			bAutoRunning = false; // 停止自动寻路/奔跑
+			
 		}
 		else
 		{
 			TargetingStatus = ETargetingStatus::NotTargeting;
 		}
-	
+		// 无论是否锁定，按下 LMB 都会关闭“自动奔跑”
+		bAutoRunning = false; // 停止自动寻路/奔跑
 	}
 	// 如果 ASC 存在，则把“按下”事件透传给 ASC（用于触发/预测能力）
 	if (GetASC())

@@ -35,12 +35,43 @@ class AURA_API AAuraEffectActor : public AActor
 public:	
 
 	AAuraEffectActor();
+	virtual void Tick(float DeltaTime) override;
 
 protected:
 
 	virtual void BeginPlay() override;
+	//计算位置
+	UPROPERTY(BlueprintReadWrite)
+	FVector CalculatedLocation;
+	//计算旋转
+	UPROPERTY(BlueprintReadWrite)
+	FRotator CalculatedRotation;
+	//旋转
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category= "Pickup Movement")
+	bool bRotates = false;
+	//旋转速率
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Pickup Movement")
+	float RotationRate = 45.f;
+	//开启正弦运动
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Pickup Movement")
+	bool bSinusoidalMovement = false;
+	//正弦振幅
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Pickup Movement")
+	float SineAmplitude = 1.f;
+	//正弦周期常数
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Pickup Movement")
+	float SinePeriodConstant = 1.f;
+	//初始位置
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Pickup Movement")
+	FVector InitialLocation;
+	
+	UFUNCTION(BlueprintCallable)
+	void StartSinusoidalMovement();
 
-		
+	UFUNCTION(BlueprintCallable)
+	void StartRotation();
+
+	
 	//应用效果到目标
 	UFUNCTION(BlueprintCallable)
 	void ApplyEffectToTarget(AActor * TargetActor,TSubclassOf<UGameplayEffect> GameplayEffectClass);
@@ -94,4 +125,9 @@ protected:
 	//效果等级
 	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category="Applied Effects")
 	float ActorLevel = 1.0f;
+
+private:
+	float RunningTime = 0.f;
+
+	void ItemMovement(float DeltaTime);
 };

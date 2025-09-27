@@ -26,7 +26,7 @@
  *     - 将这个新实例添加到 `ReturnItems` 数组中。
  * 7.  **返回结果**: 在遍历完所有物品和所有判定次数后，返回包含了所有成功生成的战利品的 `ReturnItems` 数组。
  */
-TArray<FLootItem> ULootTiers::GetLootItems()
+TArray<FLootItem> ULootTiers::  GetLootItems()
 {
 	// 创建一个 TArray 用于存储最终要返回的物品列表。
 	TArray<FLootItem> ReturnItems;
